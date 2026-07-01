@@ -11,9 +11,16 @@
     }
   },
   "routes": [
+    { "route": "/.auth/login/aad", "allowedRoles": ["anonymous", "authenticated"] },
+    { "route": "/login", "rewrite": "/.auth/login/aad", "allowedRoles": ["anonymous", "authenticated"] },
+    { "route": "/unauthorized.html", "allowedRoles": ["anonymous", "authenticated"] },
     { "route": "/*", "allowedRoles": ["viewer"] }
   ],
   "responseOverrides": {
-    "401": { "redirect": "/.auth/login/aad", "statusCode": 302 }
+    "401": { "rewrite": "/unauthorized.html", "statusCode": 403 }
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/unauthorized.html", "/.auth/*"]
   }
 }
