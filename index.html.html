@@ -1,0 +1,1215 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Usage Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --border2: #cbc9bf;
+    --text: #1a1916;
+    --text2: #6b6960;
+    --text3: #9b9a93;
+    --accent: #2563eb;
+    --accent-light: #eff4ff;
+    --accent-border: #bfcffa;
+    --teal: #0d8f6f;
+    --teal-light: #eaf6f1;
+    --amber: #b45309;
+    --amber-light: #fef3e2;
+    --coral: #c0392b;
+    --coral-light: #fdf0ee;
+    --purple: #6d28d9;
+    --purple-light: #f3f0ff;
+    --green: #166534;
+    --green-light: #f0fdf4;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 28px; height: 28px;
+    background: var(--text);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo svg { width: 16px; height: 16px; }
+  .header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+  .month-select {
+    font-size: 12px; font-weight: 500; color: var(--text);
+    background: #fff; border: 1px solid var(--accent-border);
+    border-radius: 8px; padding: 4px 9px; cursor: pointer; outline: none;
+  }
+  .month-select:hover { border-color: var(--accent); }
+  .period-badge {
+    font-size: 12px; font-weight: 500;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+    border-radius: 20px;
+    padding: 3px 10px;
+  }
+  .upload-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    background: var(--text);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 7px 16px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: opacity 0.15s;
+  }
+  .upload-btn:hover { opacity: 0.85; }
+  #csv-input { display: none; }
+
+  /* ── Layout ── */
+  .main { max-width: 1280px; margin: 0 auto; padding: 28px 32px; }
+
+  /* ── Section headings ── */
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text3);
+    margin-bottom: 14px;
+  }
+
+  /* ── Metric cards row ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+  }
+  .metric-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+  .metric-value { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; line-height: 1; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 5px; }
+
+  /* ── Charts row ── */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+  }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .chart-wrap { position: relative; }
+
+  /* ── User table ── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .table-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .table-header h2 { font-size: 14px; font-weight: 600; }
+  .sort-controls { display: flex; gap: 6px; }
+  .sort-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sort-btn.active {
+    background: var(--text);
+    color: #fff;
+    border-color: var(--text);
+  }
+  .sort-btn:hover:not(.active) { background: var(--surface2); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--text3);
+    padding: 10px 20px;
+    text-align: left;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th:not(:first-child) { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr.expanded { background: var(--accent-light); }
+  tbody tr.expanded:hover { background: var(--accent-light); }
+  td { padding: 12px 20px; font-size: 13px; vertical-align: middle; }
+  td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .user-cell { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .user-name { font-weight: 500; }
+  .user-email { font-size: 11px; color: var(--text3); }
+
+  .bar-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .mini-bar-wrap { width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .mini-bar { height: 100%; border-radius: 2px; background: var(--accent); }
+
+  .product-pills { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill {
+    font-size: 10px; font-weight: 600; padding: 2px 7px;
+    border-radius: 20px; white-space: nowrap;
+  }
+  .pill-chat { background: var(--accent-light); color: var(--accent); }
+  .pill-code { background: var(--teal-light); color: var(--teal); }
+  .pill-chrome { background: var(--amber-light); color: var(--amber); }
+  .pill-cowork { background: var(--purple-light); color: var(--purple); }
+  .pill-office { background: var(--coral-light); color: var(--coral); }
+
+  /* ── Expand row ── */
+  .detail-row { display: none; }
+  .detail-row.open { display: table-row; }
+  .detail-row td {
+    padding: 0;
+    background: #f8f8ff;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-inner { padding: 16px 20px 16px 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .detail-section h4 { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+  .detail-row-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .detail-row-item span:first-child { font-size: 12px; color: var(--text2); }
+  .detail-row-item span:last-child { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .model-bar-row { margin-bottom: 7px; }
+  .model-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+  .model-bar-track { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .model-bar-fill { height: 100%; border-radius: 3px; }
+
+  .expand-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 16px; padding: 2px 4px;
+    transition: transform 0.2s, color 0.15s;
+    display: flex; align-items: center;
+  }
+  .expand-btn:hover { color: var(--accent); }
+  .expand-btn.open { transform: rotate(90deg); color: var(--accent); }
+
+  /* ── Bottom charts ── */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  /* ── Legend ── */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Insight cards ── */
+  .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
+  .insight-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .insight-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .insight-body { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+  /* ── Inactive section ── */
+  .inactive-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .inactive-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .inactive-header h2 { font-size: 14px; font-weight: 600; }
+  .inactive-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  .inactive-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 20px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .inactive-item:nth-child(3n) { border-right: none; }
+  .inactive-item:nth-last-child(-n+3) { border-bottom: none; }
+  .inactive-info { flex: 1; min-width: 0; }
+  .inactive-name { font-size: 13px; font-weight: 500; }
+  .inactive-email { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .inactive-note { font-size: 11px; color: var(--text3); margin-top: 2px; font-style: italic; }
+  .tier-badge {
+    font-size: 10px; font-weight: 600; padding: 2px 7px;
+    border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+  }
+  .tier-premium { background: var(--purple-light); color: var(--purple); }
+  .tier-standard { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .status-pending { background: var(--amber-light); color: var(--amber); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; flex-shrink: 0; }
+
+  /* ── Upload overlay ── */
+  .upload-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .upload-overlay.show { display: flex; }
+  .upload-modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    width: 440px;
+    text-align: center;
+  }
+  .upload-modal h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  .upload-modal p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+  .drop-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 32px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 16px;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-light); }
+  .drop-zone-icon { font-size: 32px; margin-bottom: 8px; }
+  .drop-zone p { font-size: 13px; color: var(--text2); margin: 0; }
+  .drop-zone strong { color: var(--accent); }
+  .modal-cancel {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; color: var(--text2);
+    background: none; border: none; cursor: pointer; text-decoration: underline;
+  }
+
+  /* ── Spend section ── */
+  .spend-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .spend-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .spend-header h2 { font-size: 14px; font-weight: 600; }
+  .spend-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .spend-metric {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .spend-metric-label { font-size: 11px; color: var(--text2); font-weight: 500; margin-bottom: 5px; }
+  .spend-metric-value { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; line-height: 1; }
+  .spend-metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .spend-metric.highlight { background: var(--teal-light); }
+  .spend-metric.highlight .spend-metric-value { color: var(--teal); }
+  .spend-seats {
+    display: flex; align-items: center; gap: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text2);
+  }
+  .seat-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px; font-weight: 500; color: var(--text);
+  }
+  .seat-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .overage-note {
+    margin-left: auto;
+    font-size: 11px; color: var(--text3);
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  @media (max-width: 1100px) {
+    .spend-grid { grid-template-columns: repeat(2, 1fr); }
+    .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+    .charts-row { grid-template-columns: 1fr 1fr; }
+    .insights-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 768px) {
+    .main { padding: 16px; }
+    .header { padding: 0 16px; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row, .bottom-row, .insights-grid { grid-template-columns: 1fr; }
+    .detail-inner { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      </svg>
+    </div>
+    <h1>Claude Usage Analytics</h1>
+    <span class="period-badge" id="period-badge">May 2026</span>
+    <select class="month-select" id="month-select" aria-label="Select report month"></select>
+  </div>
+  <button class="upload-btn" onclick="document.getElementById('upload-overlay').classList.add('show')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Load new report
+  </button>
+  <input type="file" id="csv-input" accept=".csv">
+</header>
+
+<main class="main">
+
+  <!-- Metric cards -->
+  <div class="metrics-grid" id="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-label">Total requests</div>
+      <div class="metric-value" id="m-requests">—</div>
+      <div class="metric-sub" id="m-requests-sub"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total tokens processed</div>
+      <div class="metric-value" id="m-tokens">—</div>
+      <div class="metric-sub" id="m-tokens-sub"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Cache hit rate</div>
+      <div class="metric-value" id="m-cache">—</div>
+      <div class="metric-sub">Prompt tokens served from cache</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Active users</div>
+      <div class="metric-value" id="m-users">—</div>
+      <div class="metric-sub" id="m-users-sub"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg tokens / request</div>
+      <div class="metric-value" id="m-avg">—</div>
+      <div class="metric-sub">Prompt + completion</div>
+    </div>
+  </div>
+
+  <!-- Spend section -->
+  <div class="spend-section">
+    <div class="spend-header">
+      <h2>Plan &amp; spend</h2>
+    </div>
+    <div class="spend-grid">
+      <div class="spend-metric">
+        <div class="spend-metric-label">Monthly plan cost</div>
+        <div class="spend-metric-value">$1,025</div>
+        <div class="spend-metric-sub">29 seats total</div>
+      </div>
+      <div class="spend-metric highlight">
+        <div class="spend-metric-label">Cost per active user</div>
+        <div class="spend-metric-value" id="s-per-user">—</div>
+        <div class="spend-metric-sub" id="s-per-user-sub">This month</div>
+      </div>
+      <div class="spend-metric">
+        <div class="spend-metric-label">Cost per 1M tokens</div>
+        <div class="spend-metric-value" id="s-per-token">—</div>
+        <div class="spend-metric-sub">Effective rate</div>
+      </div>
+      <div class="spend-metric">
+        <div class="spend-metric-label">Cost per request</div>
+        <div class="spend-metric-value" id="s-per-req">—</div>
+        <div class="spend-metric-sub">Avg across all users</div>
+      </div>
+    </div>
+    <div class="spend-seats">
+      <span class="seat-badge"><span class="seat-dot" style="background:#2563eb"></span>26 standard seats</span>
+      <span class="seat-badge"><span class="seat-dot" style="background:#6d28d9"></span>3 premium seats</span>
+      <span class="overage-note">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        $200 overage credit available if usage exceeds plan limit
+      </span>
+    </div>
+  </div>
+
+  <!-- Top charts row -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Token usage by user</div>
+      <div class="chart-wrap" style="height: 260px;">
+        <canvas id="userTokenChart" role="img" aria-label="Horizontal bar chart of token usage per user"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Usage by product</div>
+      <div class="chart-wrap" style="height: 220px;">
+        <canvas id="productChart" role="img" aria-label="Doughnut chart of requests by product"></canvas>
+      </div>
+      <div class="legend" id="product-legend"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Model distribution</div>
+      <div class="chart-wrap" style="height: 220px;">
+        <canvas id="modelChart" role="img" aria-label="Doughnut chart of requests by model"></canvas>
+      </div>
+      <div class="legend" id="model-legend"></div>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="section-label">ROI signals &amp; allocation insights</div>
+  <div class="insights-grid" id="insights-grid"></div>
+
+  <!-- User table -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2>Team member breakdown</h2>
+      <div class="sort-controls">
+        <button class="sort-btn active" data-sort="tokens" onclick="setSort('tokens', this)">By tokens</button>
+        <button class="sort-btn" data-sort="requests" onclick="setSort('requests', this)">By requests</button>
+        <button class="sort-btn" data-sort="name" onclick="setSort('name', this)">By name</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th style="text-align:left">Team member</th>
+          <th>Total tokens</th>
+          <th>Requests</th>
+          <th>Cache rate</th>
+          <th>Products used</th>
+          <th style="text-align:center">Expand</th>
+        </tr>
+      </thead>
+      <tbody id="user-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Inactive members -->
+  <div class="section-label">Seat utilization</div>
+  <div class="inactive-section">
+    <div class="inactive-header">
+      <h2>No usage this period</h2>
+      <span style="font-size:12px;color:var(--text3)" id="inactive-count"></span>
+    </div>
+    <div class="inactive-grid" id="inactive-grid"></div>
+  </div>
+
+  <!-- Bottom row -->
+  <div class="bottom-row">
+    <div class="chart-card">
+      <div class="chart-title">Requests per user</div>
+      <div class="chart-wrap" id="req-chart-wrap">
+        <canvas id="reqChart" role="img" aria-label="Horizontal bar chart of requests per user"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Cache efficiency by user</div>
+      <div class="chart-wrap" id="cache-chart-wrap">
+        <canvas id="cacheChart" role="img" aria-label="Horizontal bar chart of cache hit rate by user"></canvas>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Upload overlay -->
+<div class="upload-overlay" id="upload-overlay">
+  <div class="upload-modal">
+    <h3>Load a new usage report</h3>
+    <p>Upload a Claude spend report CSV to update the dashboard for a new month.</p>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-input').click()">
+      <div class="drop-zone-icon">📊</div>
+      <p><strong>Click to choose a file</strong> or drag and drop</p>
+      <p style="margin-top:4px; font-size:12px;">spend-report-*.csv</p>
+    </div>
+    <button class="modal-cancel" onclick="document.getElementById('upload-overlay').classList.remove('show')">Cancel</button>
+  </div>
+</div>
+
+<script>
+const EMBEDDED_DATA = {"summary":{"period":"May 2026","periodKey":"2026-05","total_requests":11927,"total_prompt_tokens":2081934840,"total_completion_tokens":9704572,"total_tokens":2091639412,"total_cache_read":2000974606,"total_web_searches":6,"unique_users":22},"users":[{"email":"anjali.gurnani@centricityresearch.com","name":"Anjali Gurnani","requests":4644,"prompt_tokens":1032631852,"completion_tokens":4100972,"total_tokens":1036732824,"cache_read":1003837416,"cache_ratio":97.2,"web_searches":0,"products":{"Chat":4131,"Claude in Chrome":513},"models":{"claude-haiku-4-5-20251001":127,"claude-opus-4-7":3814,"claude-opus-4-8":317,"claude-sonnet-4-6":386}},{"email":"shakeel.abdul@centricityresearch.com","name":"Shakeel Abdul","requests":1768,"prompt_tokens":497313765,"completion_tokens":1108372,"total_tokens":498422137,"cache_read":475523043,"cache_ratio":95.6,"web_searches":6,"products":{"Chat":1660,"Cowork":83,"Office Agents":25},"models":{"claude-haiku-4-5-20251001":17,"claude-opus-4-7":1638,"claude-opus-4-8":54,"claude-sonnet-4-6":59}},{"email":"cooper.brownlee@centricityresearch.com","name":"Cooper Brownlee","requests":1232,"prompt_tokens":117241755,"completion_tokens":1063595,"total_tokens":118305350,"cache_read":110537128,"cache_ratio":94.3,"web_searches":0,"products":{"Chat":1232},"models":{"claude-sonnet-4-6":1232}},{"email":"baskaran.marichetty@centricityresearch.com","name":"Baskaran Marichetty","requests":400,"prompt_tokens":69039806,"completion_tokens":635664,"total_tokens":69675470,"cache_read":64346105,"cache_ratio":93.2,"web_searches":0,"products":{"Chat":400},"models":{"claude-sonnet-4-6":400}},{"email":"marcha.gatewood@centricityresearch.com","name":"Marcha Gatewood","requests":528,"prompt_tokens":57054426,"completion_tokens":511557,"total_tokens":57565983,"cache_read":53837464,"cache_ratio":94.4,"web_searches":0,"products":{"Chat":528},"models":{"claude-sonnet-4-6":528}},{"email":"jordan.greene@centricityresearch.com","name":"Jordan Greene","requests":495,"prompt_tokens":55309388,"completion_tokens":403036,"total_tokens":55712424,"cache_read":52788540,"cache_ratio":95.4,"web_searches":0,"products":{"Chat":495},"models":{"claude-sonnet-4-6":495}},{"email":"raphael.brochu@centricityresearch.com","name":"Raphael Brochu","requests":244,"prompt_tokens":51447152,"completion_tokens":221763,"total_tokens":51668915,"cache_read":49926097,"cache_ratio":97.0,"web_searches":0,"products":{"Chat":244},"models":{"claude-sonnet-4-6":244}},{"email":"lacey.hood@centricityresearch.com","name":"Lacey Hood","requests":628,"prompt_tokens":49813850,"completion_tokens":343008,"total_tokens":50156858,"cache_read":46421940,"cache_ratio":93.2,"web_searches":0,"products":{"Chat":628},"models":{"claude-sonnet-4-6":628}},{"email":"mani.d@centricityresearch.com","name":"Mani D","requests":190,"prompt_tokens":28652341,"completion_tokens":158833,"total_tokens":28811174,"cache_read":26772020,"cache_ratio":93.4,"web_searches":0,"products":{"Chat":186,"Cowork":4},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-7":3,"claude-sonnet-4-6":186}},{"email":"ashley.morrison@centricityresearch.com","name":"Ashley Morrison","requests":327,"prompt_tokens":25399047,"completion_tokens":154997,"total_tokens":25554044,"cache_read":24392457,"cache_ratio":96.0,"web_searches":0,"products":{"Chat":327},"models":{"claude-sonnet-4-6":327}},{"email":"prudhvi.teja@centricityresearch.com","name":"Prudhvi Teja","requests":245,"prompt_tokens":21374273,"completion_tokens":140076,"total_tokens":21514349,"cache_read":20684299,"cache_ratio":96.8,"web_searches":0,"products":{"Chat":178,"Cowork":45,"Office Agents":22},"models":{"claude-haiku-4-5-20251001":2,"claude-opus-4-6":16,"claude-opus-4-7":49,"claude-sonnet-4-6":178}},{"email":"suman.jakka@centricityresearch.com","name":"Suman Jakka","requests":224,"prompt_tokens":15024547,"completion_tokens":150758,"total_tokens":15175305,"cache_read":14104184,"cache_ratio":93.9,"web_searches":0,"products":{"Chat":33,"Cowork":69,"Office Agents":122},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-7":74,"claude-sonnet-4-6":149}},{"email":"koteeswaran.ramachandran@centricityresearch.com","name":"Koteeswaran Ramachandran","requests":235,"prompt_tokens":12477154,"completion_tokens":221137,"total_tokens":12698291,"cache_read":11682728,"cache_ratio":93.6,"web_searches":0,"products":{"Chat":16,"Claude Code":219},"models":{"claude-haiku-4-5-20251001":39,"claude-sonnet-4-6":196}},{"email":"julia.brown@centricityresearch.com","name":"Julia Brown","requests":167,"prompt_tokens":11573520,"completion_tokens":132871,"total_tokens":11706391,"cache_read":10912511,"cache_ratio":94.3,"web_searches":0,"products":{"Chat":167},"models":{"claude-sonnet-4-6":167}},{"email":"bhuvana.venkataramanan@centricityresearch.com","name":"Bhuvana Venkataramanan","requests":185,"prompt_tokens":11467382,"completion_tokens":137132,"total_tokens":11604514,"cache_read":10891212,"cache_ratio":95.0,"web_searches":0,"products":{"Chat":185},"models":{"claude-sonnet-4-6":185}},{"email":"eric.kemp@centricityresearch.com","name":"Eric Kemp","requests":164,"prompt_tokens":10653831,"completion_tokens":55164,"total_tokens":10708995,"cache_read":9795042,"cache_ratio":91.9,"web_searches":0,"products":{"Chat":164},"models":{"claude-sonnet-4-6":164}},{"email":"katharine.gouthro@centricityresearch.com","name":"Katharine Gouthro","requests":82,"prompt_tokens":6136623,"completion_tokens":70244,"total_tokens":6206867,"cache_read":5911683,"cache_ratio":96.3,"web_searches":0,"products":{"Chat":82},"models":{"claude-sonnet-4-6":82}},{"email":"tristin.farris@centricityresearch.com","name":"Tristin Farris","requests":62,"prompt_tokens":2916284,"completion_tokens":25553,"total_tokens":2941837,"cache_read":2707624,"cache_ratio":92.8,"web_searches":0,"products":{"Chat":62},"models":{"claude-sonnet-4-6":62}},{"email":"anita.rani@centricityresearch.com","name":"Anita Rani","requests":51,"prompt_tokens":2763543,"completion_tokens":39605,"total_tokens":2803148,"cache_read":2608113,"cache_ratio":94.4,"web_searches":0,"products":{"Chat":51},"models":{"claude-sonnet-4-6":51}},{"email":"ellen.smith@centricityresearch.com","name":"Ellen Smith","requests":34,"prompt_tokens":2719901,"completion_tokens":23175,"total_tokens":2743076,"cache_read":2443818,"cache_ratio":89.8,"web_searches":0,"products":{"Chat":34},"models":{"claude-sonnet-4-6":34}},{"email":"shaley@centricityresearch.com","name":"Shaley","requests":16,"prompt_tokens":673728,"completion_tokens":6354,"total_tokens":680082,"cache_read":621391,"cache_ratio":92.2,"web_searches":0,"products":{"Chat":16},"models":{"claude-sonnet-4-6":16}},{"email":"talya.amor@centricityresearch.com","name":"Talya Amor","requests":6,"prompt_tokens":250672,"completion_tokens":706,"total_tokens":251378,"cache_read":229791,"cache_ratio":91.7,"web_searches":0,"products":{"Chat":6},"models":{"claude-sonnet-4-6":6}}],"products":{"Chat":{"requests":10825,"tokens":2019523996},"Claude Code":{"requests":219,"tokens":11682209},"Claude in Chrome":{"requests":513,"tokens":27052260},"Cowork":{"requests":201,"tokens":15874496},"Office Agents":{"requests":169,"tokens":7801879}},"models":{"claude-haiku-4-5-20251001":{"requests":187,"tokens":835513},"claude-opus-4-6":{"requests":16,"tokens":687969},"claude-opus-4-7":{"requests":5578,"tokens":1452204594},"claude-opus-4-8":{"requests":371,"tokens":56888157},"claude-sonnet-4-6":{"requests":5775,"tokens":571318607}}};
+
+const MEMBERS_DATA = [
+  {"name":"Shaley","email":"shaley@centricityresearch.com","role":"Primary Owner","status":"Active","tier":"Standard"},
+  {"name":"Raphael Brochu","email":"raphael.brochu@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Suman Jakka","email":"suman.jakka@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Marcha Gatewood","email":"marcha.gatewood@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Ashley Morrison","email":"ashley.morrison@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Talya Amor","email":"talya.amor@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Alexandra Walton","email":"alexandra.walton@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Amanda Clary-Phillips","email":"amanda.phillips@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Shakeel Abdul","email":"shakeel.abdul@centricityresearch.com","role":"User","status":"Active","tier":"Premium"},
+  {"name":"Katharine Gouthro","email":"katharine.gouthro@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Anjali Gurnani","email":"anjali.gurnani@centricityresearch.com","role":"User","status":"Active","tier":"Premium"},
+  {"name":"Lacey Hood","email":"lacey.hood@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Jordan Greene","email":"jordan.greene@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Julia Brown","email":"julia.brown@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Prudhvi Teja","email":"prudhvi.teja@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Govardhan Pothala","email":"govardhan.pothala@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Cooper Brownlee","email":"cooper.brownlee@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Koteeswaran Ramachandran","email":"koteeswaran.ramachandran@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Anita Rani","email":"anita.rani@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Mani Deepak","email":"mani.d@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Ellen Smith","email":"ellen.smith@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Baskaran Marichetty","email":"baskaran.marichetty@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Eric Kemp","email":"eric.kemp@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Bhuvana Venkataramanan","email":"bhuvana.venkataramanan@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Emily Waddington","email":"emily.waddington@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Abinaya Sundaram","email":"abinaya.sundaram@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Tristin Farris","email":"tristin.farris@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
+  {"name":"Navin Raj","email":"navin.raj@centricityresearch.com","role":"User","status":"Active","tier":"Premium","note":"Added June 1, 2026"},
+  {"name":"Tajinder Kaur","email":"tajinder.kaur@centricityresearch.com","role":"User","status":"Pending","tier":"Standard"}
+];
+
+
+const AVATAR_COLORS = [
+  ['#e8f0fe','#1a56b0'],['#e8f8f1','#0d6b50'],['#fef3e2','#92400e'],
+  ['#f3f0ff','#5b21b6'],['#fdf0ee','#9b2c2c'],['#f0fdf4','#166534'],
+  ['#eff6ff','#1d4ed8'],['#fef9c3','#854d0e'],['#fce7f3','#9d174d'],
+  ['#ecfdf5','#065f46'],['#ede9fe','#4c1d95'],['#fff7ed','#9a3412'],
+];
+const PRODUCT_COLORS = {
+  'Chat': '#2563eb',
+  'Claude Code': '#0d8f6f',
+  'Claude in Chrome': '#b45309',
+  'Cowork': '#6d28d9',
+  'Office Agents': '#c0392b',
+};
+const MODEL_COLORS = {
+  'claude-opus-4-7': '#2563eb',
+  'claude-sonnet-4-6': '#0d8f6f',
+  'claude-opus-4-8': '#b45309',
+  'claude-haiku-4-5-20251001': '#6d28d9',
+  'claude-opus-4-6': '#c0392b',
+};
+const MODEL_LABELS = {
+  'claude-opus-4-7': 'Opus 4.7',
+  'claude-sonnet-4-6': 'Sonnet 4.6',
+  'claude-opus-4-8': 'Opus 4.8',
+  'claude-haiku-4-5-20251001': 'Haiku 4.5',
+  'claude-opus-4-6': 'Opus 4.6',
+};
+
+// ── Formatting ──
+function fmtTokens(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return n.toString();
+}
+function fmtNum(n) { return n.toLocaleString(); }
+function initials(name) {
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0,2).toUpperCase();
+}
+
+let charts = {};
+let currentSort = 'tokens';
+// ── Embedded June 2026 (seed) ──
+const EMBEDDED_JUNE = {"summary":{"period":"June 2026","periodKey":"2026-06","total_requests":35566,"total_prompt_tokens":7585061446,"total_completion_tokens":26911628,"total_tokens":7611973074,"total_cache_read":7309044706,"total_web_searches":356,"unique_users":30},"users":[{"email":"navin.raj@centricityresearch.com","name":"Navin Raj","requests":8172,"prompt_tokens":3945219630,"completion_tokens":7661645,"cache_read":3865959061,"web_searches":3,"products":{"Chat":26,"Claude Code":8146},"models":{"claude-haiku-4-5-20251001":20,"claude-opus-4-8":8152},"total_tokens":3952881275,"cache_ratio":98},{"email":"anjali.gurnani@centricityresearch.com","name":"Anjali Gurnani","requests":5636,"prompt_tokens":1156160844,"completion_tokens":6036256,"cache_read":1120205124,"web_searches":22,"products":{"Chat":4034,"Claude in Chrome":1602},"models":{"claude-haiku-4-5-20251001":414,"claude-opus-4-7":285,"claude-opus-4-8":3734,"claude-sonnet-4-6":1203},"total_tokens":1162197100,"cache_ratio":96.9},{"email":"shakeel.abdul@centricityresearch.com","name":"Shakeel Abdul","requests":4982,"prompt_tokens":837495844,"completion_tokens":614054,"cache_read":761491664,"web_searches":23,"products":{"Claude in Chrome":4523,"Chat":445,"Cowork":14},"models":{"claude-sonnet-4-6":3274,"claude-haiku-4-5-20251001":1671,"claude-fable-5":21,"claude-opus-4-8":16},"total_tokens":838109898,"cache_ratio":90.9},{"email":"baskaran.marichetty@centricityresearch.com","name":"Baskaran Marichetty","requests":1405,"prompt_tokens":241953717,"completion_tokens":1136612,"cache_read":227835758,"web_searches":29,"products":{"Chat":1405},"models":{"claude-sonnet-4-6":1274,"claude-haiku-4-5-20251001":7,"claude-opus-4-8":124},"total_tokens":243090329,"cache_ratio":94.2},{"email":"koteeswaran.ramachandran@centricityresearch.com","name":"Koteeswaran Ramachandran","requests":2764,"prompt_tokens":234461381,"completion_tokens":2495760,"cache_read":225562433,"web_searches":0,"products":{"Chat":21,"Claude Code":2743},"models":{"claude-haiku-4-5-20251001":278,"claude-sonnet-4-6":2486},"total_tokens":236957141,"cache_ratio":96.2},{"email":"abhishek.singhvi@centricityresearch.com","name":"Abhishek Singhvi","requests":1849,"prompt_tokens":209435878,"completion_tokens":1840250,"cache_read":197351431,"web_searches":17,"products":{"Chat":623,"Claude Code":1226},"models":{"claude-sonnet-4-6":1378,"claude-haiku-4-5-20251001":411,"claude-opus-4-8":60},"total_tokens":211276128,"cache_ratio":94.2},{"email":"cooper.brownlee@centricityresearch.com","name":"Cooper Brownlee","requests":1312,"prompt_tokens":174279204,"completion_tokens":669791,"cache_read":167179328,"web_searches":78,"products":{"Chat":1312},"models":{"claude-haiku-4-5-20251001":21,"claude-sonnet-4-6":1291},"total_tokens":174948995,"cache_ratio":95.9},{"email":"anita.rani@centricityresearch.com","name":"Anita Rani","requests":2281,"prompt_tokens":161903940,"completion_tokens":2322184,"cache_read":155384300,"web_searches":0,"products":{"Chat":22,"Claude Code":2259},"models":{"claude-haiku-4-5-20251001":365,"claude-opus-4-8":3,"claude-sonnet-4-6":1913},"total_tokens":164226124,"cache_ratio":96},{"email":"jordan.greene@centricityresearch.com","name":"Jordan Greene","requests":917,"prompt_tokens":146278274,"completion_tokens":587919,"cache_read":141457891,"web_searches":52,"products":{"Chat":917},"models":{"claude-haiku-4-5-20251001":4,"claude-sonnet-4-6":913},"total_tokens":146866193,"cache_ratio":96.7},{"email":"ellen.smith@centricityresearch.com","name":"Ellen Smith","requests":883,"prompt_tokens":81012711,"completion_tokens":463130,"cache_read":76245314,"web_searches":28,"products":{"Chat":883},"models":{"claude-haiku-4-5-20251001":26,"claude-sonnet-4-6":857},"total_tokens":81475841,"cache_ratio":94.1},{"email":"marcha.gatewood@centricityresearch.com","name":"Marcha Gatewood","requests":683,"prompt_tokens":73358532,"completion_tokens":330631,"cache_read":68363499,"web_searches":2,"products":{"Chat":683},"models":{"claude-haiku-4-5-20251001":16,"claude-sonnet-4-6":667},"total_tokens":73689163,"cache_ratio":93.2},{"email":"govardhan.pothala@centricityresearch.com","name":"Govardhan Pothala","requests":671,"prompt_tokens":45453655,"completion_tokens":431544,"cache_read":40976071,"web_searches":0,"products":{"Chat":4,"Office Agents":667},"models":{"claude-sonnet-4-6":4,"claude-haiku-4-5-20251001":328,"claude-opus-4-8":339},"total_tokens":45885199,"cache_ratio":90.1},{"email":"shaley@centricityresearch.com","name":"Shaley","requests":408,"prompt_tokens":34487521,"completion_tokens":227344,"cache_read":33210846,"web_searches":2,"products":{"Chat":408},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-8":17,"claude-sonnet-4-6":390},"total_tokens":34714865,"cache_ratio":96.3},{"email":"ashley.morrison@centricityresearch.com","name":"Ashley Morrison","requests":337,"prompt_tokens":32966365,"completion_tokens":194959,"cache_read":31176915,"web_searches":4,"products":{"Chat":337},"models":{"claude-haiku-4-5-20251001":3,"claude-sonnet-4-6":334},"total_tokens":33161324,"cache_ratio":94.6},{"email":"suman.jakka@centricityresearch.com","name":"Suman Jakka","requests":679,"prompt_tokens":27057471,"completion_tokens":256027,"cache_read":25430402,"web_searches":3,"products":{"Cowork":42,"Office Agents":637},"models":{"claude-haiku-4-5-20251001":396,"claude-sonnet-4-6":193,"claude-opus-4-8":90},"total_tokens":27313498,"cache_ratio":94},{"email":"raphael.brochu@centricityresearch.com","name":"Raphael Brochu","requests":102,"prompt_tokens":26859562,"completion_tokens":75022,"cache_read":24894446,"web_searches":2,"products":{"Chat":102},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-4-6":100},"total_tokens":26934584,"cache_ratio":92.7},{"email":"prudhvi.teja@centricityresearch.com","name":"Prudhvi Teja","requests":480,"prompt_tokens":25440590,"completion_tokens":367072,"cache_read":23102612,"web_searches":6,"products":{"Chat":102,"Office Agents":378},"models":{"claude-sonnet-4-6":102,"claude-haiku-4-5-20251001":182,"claude-opus-4-7":196},"total_tokens":25807662,"cache_ratio":90.8},{"email":"lacey.hood@centricityresearch.com","name":"Lacey Hood","requests":322,"prompt_tokens":21032565,"completion_tokens":140764,"cache_read":20072218,"web_searches":5,"products":{"Chat":322},"models":{"claude-haiku-4-5-20251001":5,"claude-sonnet-4-6":317},"total_tokens":21173329,"cache_ratio":95.4},{"email":"bhuvana.venkataramanan@centricityresearch.com","name":"Bhuvana Venkataramanan","requests":291,"prompt_tokens":18890311,"completion_tokens":244394,"cache_read":17675889,"web_searches":18,"products":{"Chat":291},"models":{"claude-haiku-4-5-20251001":11,"claude-sonnet-4-6":280},"total_tokens":19134705,"cache_ratio":93.6},{"email":"julia.brown@centricityresearch.com","name":"Julia Brown","requests":263,"prompt_tokens":16543012,"completion_tokens":167916,"cache_read":15800613,"web_searches":9,"products":{"Chat":263},"models":{"claude-haiku-4-5-20251001":10,"claude-sonnet-4-6":216,"claude-sonnet-5":37},"total_tokens":16710928,"cache_ratio":95.5},{"email":"abinaya.sundaram@centricityresearch.com","name":"Abinaya Sundaram","requests":193,"prompt_tokens":14674841,"completion_tokens":194468,"cache_read":13858066,"web_searches":0,"products":{"Claude Code":193},"models":{"claude-haiku-4-5-20251001":8,"claude-sonnet-4-6":185},"total_tokens":14869309,"cache_ratio":94.4},{"email":"eric.kemp@centricityresearch.com","name":"Eric Kemp","requests":201,"prompt_tokens":13207658,"completion_tokens":72832,"cache_read":12537581,"web_searches":20,"products":{"Chat":201},"models":{"claude-haiku-4-5-20251001":7,"claude-sonnet-4-6":194},"total_tokens":13280490,"cache_ratio":94.9},{"email":"tristin.farris@centricityresearch.com","name":"Tristin Farris","requests":276,"prompt_tokens":11918861,"completion_tokens":88467,"cache_read":10407100,"web_searches":0,"products":{"Chat":276},"models":{"claude-haiku-4-5-20251001":16,"claude-sonnet-4-6":260},"total_tokens":12007328,"cache_ratio":87.3},{"email":"delmas.brown@centricityresearch.com","name":"Delmas Brown","requests":157,"prompt_tokens":10456196,"completion_tokens":160838,"cache_read":9913401,"web_searches":0,"products":{"Chat":157},"models":{"claude-haiku-4-5-20251001":4,"claude-sonnet-4-6":153},"total_tokens":10617034,"cache_ratio":94.8},{"email":"amanda.phillips@centricityresearch.com","name":"Amanda Phillips","requests":123,"prompt_tokens":7592524,"completion_tokens":79538,"cache_read":7213991,"web_searches":0,"products":{"Chat":104,"Office Agents":19},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-4-6":103,"claude-opus-4-8":19},"total_tokens":7672062,"cache_ratio":95},{"email":"mani.d@centricityresearch.com","name":"Mani D","requests":28,"prompt_tokens":7085374,"completion_tokens":15836,"cache_read":6398689,"web_searches":0,"products":{"Chat":28},"models":{"claude-sonnet-4-6":28},"total_tokens":7101210,"cache_ratio":90.3},{"email":"talya.amor@centricityresearch.com","name":"Talya Amor","requests":77,"prompt_tokens":5753883,"completion_tokens":9435,"cache_read":5611458,"web_searches":1,"products":{"Chat":77},"models":{"claude-sonnet-4-6":77},"total_tokens":5763318,"cache_ratio":97.5},{"email":"alexandra.walton@centricityresearch.com","name":"Alexandra Walton","requests":46,"prompt_tokens":2826493,"completion_tokens":15844,"cache_read":2548794,"web_searches":29,"products":{"Chat":46},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-4-6":44},"total_tokens":2842337,"cache_ratio":90.2},{"email":"emily.waddington@centricityresearch.com","name":"Emily Waddington","requests":22,"prompt_tokens":983134,"completion_tokens":6181,"cache_read":940785,"web_searches":0,"products":{"Chat":22},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-4-6":21},"total_tokens":989315,"cache_ratio":95.7},{"email":"katharine.gouthro@centricityresearch.com","name":"Katharine Gouthro","requests":6,"prompt_tokens":271475,"completion_tokens":4915,"cache_read":239026,"web_searches":3,"products":{"Chat":6},"models":{"claude-sonnet-4-6":6},"total_tokens":276390,"cache_ratio":88}],"products":{"Claude in Chrome":{"requests":6125,"tokens":917583547},"Chat":{"requests":13117,"tokens":2151664220},"Claude Code":{"requests":14567,"tokens":4424118962},"Cowork":{"requests":56,"tokens":2300862},"Office Agents":{"requests":1701,"tokens":89393855}},"models":{"claude-sonnet-4-6":{"requests":18263,"tokens":2443463386},"claude-haiku-4-5-20251001":{"requests":4210,"tokens":34351956},"claude-opus-4-8":{"requests":12554,"tokens":4988049053},"claude-fable-5":{"requests":21,"tokens":2704672},"claude-opus-4-7":{"requests":481,"tokens":112799928},"claude-sonnet-5":{"requests":37,"tokens":3692451}}};
+
+// ── Month store: persists uploaded months across sessions ──
+const STORE_KEY = 'claudeUsageMonths_v1';
+function loadStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch(e){ return {}; } }
+function persistStore(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(monthStore)); } catch(e){ console.warn('Storage unavailable:', e); } }
+// Seeds as baseline; anything saved locally (uploads) overlays and wins.
+let monthStore = Object.assign({ '2026-05': EMBEDDED_DATA, '2026-06': EMBEDDED_JUNE }, loadStore());
+function monthKeys(){ return Object.keys(monthStore).sort().reverse(); }  // newest first
+function rebuildMonthSelect(selected){
+  const sel = document.getElementById('month-select');
+  if (!sel) return;
+  const keys = monthKeys();
+  sel.innerHTML = keys.map(k => '<option value="'+k+'">'+monthStore[k].summary.period+'</option>').join('');
+  sel.value = selected || keys[0];
+}
+function showMonth(key){
+  if (!monthStore[key]) return;
+  renderDashboard(monthStore[key]);
+  const sel = document.getElementById('month-select');
+  if (sel) sel.value = key;
+}
+function ingestUpload(data){
+  let key = data.summary.periodKey;
+  if (!key || key.indexOf('upload-') === 0) key = 'upload-' + Date.now();
+  data.summary.periodKey = key;
+  monthStore[key] = data;
+  persistStore();
+  rebuildMonthSelect(key);
+  showMonth(key);
+  document.getElementById('upload-overlay').classList.remove('show');
+}
+
+let currentData = null;
+
+function renderDashboard(data) {
+  currentData = data;
+  const s = data.summary;
+
+  // Period badge
+  document.getElementById('period-badge').textContent = s.period;
+
+  // Metrics
+  const cacheRate = (s.total_cache_read / s.total_prompt_tokens * 100).toFixed(1);
+  document.getElementById('m-requests').textContent = fmtNum(s.total_requests);
+  document.getElementById('m-requests-sub').textContent = s.unique_users + ' active users';
+  document.getElementById('m-tokens').textContent = fmtTokens(s.total_tokens);
+  document.getElementById('m-tokens-sub').textContent = fmtTokens(s.total_prompt_tokens) + ' prompt · ' + fmtTokens(s.total_completion_tokens) + ' completion';
+  document.getElementById('m-cache').textContent = cacheRate + '%';
+  document.getElementById('m-users').textContent = s.unique_users;
+  document.getElementById('m-users-sub').textContent = 'Centricity Research team';
+  document.getElementById('m-avg').textContent = fmtNum(Math.round(s.total_tokens / s.total_requests));
+
+  // Enrich users with seat tier from members data
+  const memberMap = {};
+  MEMBERS_DATA.forEach(m => { memberMap[m.email] = m; });
+  data.users.forEach(u => {
+    const m = memberMap[u.email];
+    u.tier = m ? m.tier : 'Standard';
+  });
+
+  // Spend metrics
+  const MONTHLY_COST = 1025;
+  const costPerUser = (MONTHLY_COST / s.unique_users).toFixed(2);
+  const costPerMToken = (MONTHLY_COST / (s.total_tokens / 1e6)).toFixed(2);
+  const costPerReq = (MONTHLY_COST / s.total_requests).toFixed(3);
+  document.getElementById('s-per-user').textContent = '$' + costPerUser;
+  document.getElementById('s-per-user-sub').textContent = s.unique_users + ' active users this month';
+  document.getElementById('s-per-token').textContent = '$' + costPerMToken;
+  document.getElementById('s-per-req').textContent = '$' + costPerReq;
+
+  renderUserTokenChart(data);
+  renderProductChart(data);
+  renderModelChart(data);
+  renderTable(data, currentSort);
+  renderBottomCharts(data);
+  renderInsights(data);
+  renderInactive(data);
+}
+
+function renderUserTokenChart(data) {
+  const users = [...data.users].sort((a,b) => b.total_tokens - a.total_tokens).slice(0,12);
+  const labels = users.map(u => u.name.split(' ')[0]);
+  const vals = users.map(u => u.total_tokens);
+  const height = Math.max(260, users.length * 26 + 60);
+  document.querySelector('#userTokenChart').parentElement.style.height = height + 'px';
+
+  if (charts.userToken) charts.userToken.destroy();
+  charts.userToken = new Chart(document.getElementById('userTokenChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        backgroundColor: users.map((_,i) => AVATAR_COLORS[i % AVATAR_COLORS.length][1] + 'cc'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ' ' + fmtTokens(ctx.raw) + ' tokens' }
+      }},
+      scales: {
+        x: { grid: { color: '#e2e0d833' }, ticks: { callback: v => fmtTokens(v), font: { size: 11 }, color: '#9b9a93' }},
+        y: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#1a1916' }}
+      }
+    }
+  });
+}
+
+function renderProductChart(data) {
+  const prods = Object.entries(data.products).sort((a,b) => b[1].requests - a[1].requests);
+  const labels = prods.map(p => p[0]);
+  const vals = prods.map(p => p[1].requests);
+  const colors = labels.map(l => PRODUCT_COLORS[l] || '#888');
+  const total = vals.reduce((a,b) => a+b, 0);
+
+  if (charts.product) charts.product.destroy();
+  charts.product = new Chart(document.getElementById('productChart'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ' ' + ctx.label + ': ' + fmtNum(ctx.raw) + ' (' + (ctx.raw/total*100).toFixed(1) + '%)' }
+      }}
+    }
+  });
+  const legend = document.getElementById('product-legend');
+  legend.innerHTML = labels.map((l,i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l} <span style="color:#9b9a93;margin-left:2px">${(vals[i]/total*100).toFixed(0)}%</span></span>`
+  ).join('');
+}
+
+function renderModelChart(data) {
+  const models = Object.entries(data.models).sort((a,b) => b[1].requests - a[1].requests);
+  const labels = models.map(m => MODEL_LABELS[m[0]] || m[0]);
+  const vals = models.map(m => m[1].requests);
+  const colors = models.map(m => MODEL_COLORS[m[0]] || '#888');
+  const total = vals.reduce((a,b) => a+b, 0);
+
+  if (charts.model) charts.model.destroy();
+  charts.model = new Chart(document.getElementById('modelChart'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ' ' + ctx.label + ': ' + fmtNum(ctx.raw) + ' (' + (ctx.raw/total*100).toFixed(1) + '%)' }
+      }}
+    }
+  });
+  const legend = document.getElementById('model-legend');
+  legend.innerHTML = labels.map((l,i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l} <span style="color:#9b9a93;margin-left:2px">${(vals[i]/total*100).toFixed(0)}%</span></span>`
+  ).join('');
+}
+
+function renderTable(data, sortKey) {
+  const users = [...data.users];
+  if (sortKey === 'tokens') users.sort((a,b) => b.total_tokens - a.total_tokens);
+  else if (sortKey === 'requests') users.sort((a,b) => b.requests - a.requests);
+  else users.sort((a,b) => a.name.localeCompare(b.name));
+
+  const maxTokens = Math.max(...users.map(u => u.total_tokens));
+  const tbody = document.getElementById('user-tbody');
+  tbody.innerHTML = '';
+
+  users.forEach((u, idx) => {
+    const ac = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    const pct = (u.total_tokens / maxTokens * 100).toFixed(0);
+    const pills = Object.entries(u.products).map(([prod, cnt]) => {
+      const cls = prod === 'Chat' ? 'pill-chat' : prod === 'Claude Code' ? 'pill-code' : prod === 'Claude in Chrome' ? 'pill-chrome' : prod === 'Cowork' ? 'pill-cowork' : 'pill-office';
+      return `<span class="pill ${cls}">${prod}</span>`;
+    }).join('');
+
+    // Main row
+    const tr = document.createElement('tr');
+    tr.id = 'row-' + idx;
+    tr.innerHTML = `
+      <td style="width:36px; padding-right:0">
+        <button class="expand-btn" id="btn-${idx}" onclick="toggleExpand(${idx})" aria-label="Expand ${u.name}">&#9654;</button>
+      </td>
+      <td>
+        <div class="user-cell">
+          <div class="avatar" style="background:${ac[0]};color:${ac[1]}">${initials(u.name)}</div>
+          <div>
+            <div class="user-name">${u.name}${u.tier === 'Premium' ? ' <span class="tier-badge tier-premium">Premium</span>' : ''}</div>
+            <div class="user-email">${u.email}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="bar-cell">
+          <span>${fmtTokens(u.total_tokens)}</span>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%;background:${ac[1]}"></div></div>
+        </div>
+      </td>
+      <td>${fmtNum(u.requests)}</td>
+      <td>${u.cache_ratio}%</td>
+      <td><div class="product-pills">${pills}</div></td>
+      <td style="text-align:center"><button class="expand-btn" id="btn2-${idx}" onclick="toggleExpand(${idx})" aria-label="Expand details">&#9654;</button></td>
+    `;
+    tbody.appendChild(tr);
+
+    // Detail row
+    const modelTotal = Object.values(u.models).reduce((a,b) => a+b, 0);
+    const modelBars = Object.entries(u.models).sort((a,b) => b[1]-a[1]).map(([m, cnt]) => {
+      const pct = (cnt / modelTotal * 100).toFixed(0);
+      const color = MODEL_COLORS[m] || '#888';
+      const label = MODEL_LABELS[m] || m;
+      return `<div class="model-bar-row">
+        <div class="model-bar-label"><span>${label}</span><span>${fmtNum(cnt)} req (${pct}%)</span></div>
+        <div class="model-bar-track"><div class="model-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+    }).join('');
+
+    const prodItems = Object.entries(u.products).map(([p, cnt]) =>
+      `<div class="detail-row-item"><span>${p}</span><span>${fmtNum(cnt)} requests</span></div>`
+    ).join('');
+
+    const dtr = document.createElement('tr');
+    dtr.className = 'detail-row';
+    dtr.id = 'detail-' + idx;
+    dtr.innerHTML = `<td colspan="7">
+      <div class="detail-inner">
+        <div class="detail-section">
+          <h4>Model usage</h4>
+          ${modelBars}
+        </div>
+        <div class="detail-section">
+          <h4>Token breakdown</h4>
+          <div class="detail-row-item"><span>Prompt tokens</span><span>${fmtTokens(u.prompt_tokens)}</span></div>
+          <div class="detail-row-item"><span>Completion tokens</span><span>${fmtTokens(u.completion_tokens)}</span></div>
+          <div class="detail-row-item"><span>Cache reads</span><span>${fmtTokens(u.cache_read)}</span></div>
+          <div class="detail-row-item"><span>Cache hit rate</span><span>${u.cache_ratio}%</span></div>
+          ${u.web_searches > 0 ? `<div class="detail-row-item"><span>Web searches</span><span>${u.web_searches}</span></div>` : ''}
+          <h4 style="margin-top:14px">Products</h4>
+          ${prodItems}
+        </div>
+      </div>
+    </td>`;
+    tbody.appendChild(dtr);
+  });
+}
+
+function toggleExpand(idx) {
+  const detail = document.getElementById('detail-' + idx);
+  const btn1 = document.getElementById('btn-' + idx);
+  const btn2 = document.getElementById('btn2-' + idx);
+  const row = document.getElementById('row-' + idx);
+  const isOpen = detail.classList.contains('open');
+  detail.classList.toggle('open', !isOpen);
+  [btn1, btn2].forEach(b => { if(b) b.classList.toggle('open', !isOpen); });
+  row.classList.toggle('expanded', !isOpen);
+}
+
+function setSort(key, el) {
+  currentSort = key;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (currentData) renderTable(currentData, key);
+}
+
+function renderBottomCharts(data) {
+  const users = [...data.users].sort((a,b) => b.requests - a.requests).slice(0,15);
+  const labels = users.map(u => u.name.split(' ')[0]);
+
+  const reqH = Math.max(260, users.length * 26 + 60);
+  document.getElementById('req-chart-wrap').style.height = reqH + 'px';
+  if (charts.req) charts.req.destroy();
+  charts.req = new Chart(document.getElementById('reqChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: users.map(u => u.requests), backgroundColor: '#2563ebcc', borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmtNum(ctx.raw) + ' requests' }}},
+      scales: {
+        x: { grid: { color: '#e2e0d833' }, ticks: { font: { size: 11 }, color: '#9b9a93' }},
+        y: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#1a1916' }}
+      }
+    }
+  });
+
+  const cacheUsers = [...data.users].sort((a,b) => a.cache_ratio - b.cache_ratio);
+  const cacheH = Math.max(260, cacheUsers.length * 22 + 60);
+  document.getElementById('cache-chart-wrap').style.height = cacheH + 'px';
+  if (charts.cache) charts.cache.destroy();
+  charts.cache = new Chart(document.getElementById('cacheChart'), {
+    type: 'bar',
+    data: {
+      labels: cacheUsers.map(u => u.name.split(' ')[0]),
+      datasets: [{ data: cacheUsers.map(u => u.cache_ratio), backgroundColor: '#0d8f6fcc', borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + '% cache rate' }}},
+      scales: {
+        x: { min: 80, max: 100, grid: { color: '#e2e0d833' }, ticks: { callback: v => v + '%', font: { size: 11 }, color: '#9b9a93' }},
+        y: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#1a1916' }}
+      }
+    }
+  });
+}
+
+function renderInsights(data) {
+  const users = data.users;
+  const totalReqs = data.summary.total_requests;
+  const topUser = users[0];
+  const topPct = (topUser.total_tokens / data.summary.total_tokens * 100).toFixed(0);
+
+  // Power users (top 3)
+  const top3 = users.slice(0,3);
+  const top3pct = (top3.reduce((a,u) => a+u.total_tokens,0) / data.summary.total_tokens * 100).toFixed(0);
+
+  // Multi-product users
+  const multiProd = users.filter(u => Object.keys(u.products).length > 1);
+
+  // Opus heavy users
+  const opusHeavy = users.filter(u => {
+    const opusReqs = (u.models['claude-opus-4-7'] || 0) + (u.models['claude-opus-4-8'] || 0);
+    return opusReqs / u.requests > 0.5 && u.requests > 50;
+  });
+
+  // Low engagement users
+  const lowEng = users.filter(u => u.requests < 30);
+
+  // Cache rate
+  const cacheRate = (data.summary.total_cache_read / data.summary.total_prompt_tokens * 100).toFixed(1);
+
+  const insights = [
+    {
+      icon: '🏆', bg: '#eff6ff', color: '#1d4ed8',
+      title: 'Power user concentration',
+      body: `${top3.map(u => u.name.split(' ')[0]).join(', ')} account for ${top3pct}% of all token usage. ${topUser.name.split(' ')[0]} alone drives ${topPct}% — strong ROI signal for their license.`
+    },
+    {
+      icon: '⚡', bg: '#eaf6f1', color: '#0d8f6f',
+      title: 'Excellent cache efficiency',
+      body: `Team-wide cache hit rate is ${cacheRate}%, meaning the vast majority of prompt tokens are served from cache — substantially reducing effective cost per token.`
+    },
+    {
+      icon: '🔧', bg: '#f3f0ff', color: '#5b21b6',
+      title: `${multiProd.length} users using advanced products`,
+      body: `${multiProd.map(u => u.name.split(' ')[0]).join(', ')} use multiple Claude surfaces (Cowork, Claude Code, Office Agents). These are candidates for deeper workflow integrations.`
+    },
+    {
+      icon: '🧠', bg: '#fef3e2', color: '#92400e',
+      title: 'Opus model preference',
+      body: `${opusHeavy.length > 0 ? opusHeavy.map(u => u.name.split(' ')[0]).join(', ') + (opusHeavy.length > 0 ? ' heavily' : '') + ' use Opus models (>50% of requests)' : 'Most users are on Sonnet'}. Opus usage on complex tasks suggests high-value research or analytical workflows.`
+    },
+    {
+      icon: '📈', bg: '#f0fdf4', color: '#166534',
+      title: `${lowEng.length} users with low engagement`,
+      body: `${lowEng.map(u => u.name.split(' ')[0]).slice(0,4).join(', ')}${lowEng.length > 4 ? ' and others' : ''} have under 30 requests this month. Consider onboarding support or use-case discovery to drive adoption.`
+    },
+    {
+      icon: '🌐', bg: '#fdf0ee', color: '#9b2c2c',
+      title: 'Claude in Chrome opportunity',
+      body: `Only Anjali is using Claude in Chrome (513 requests). This product has strong research ROI — consider expanding access or running a team demo for web-heavy roles.`
+    },
+  ];
+
+  const grid = document.getElementById('insights-grid');
+  grid.innerHTML = insights.map(i => `
+    <div class="insight-card">
+      <div class="insight-icon" style="background:${i.bg};color:${i.color}">${i.icon}</div>
+      <div>
+        <div class="insight-title">${i.title}</div>
+        <div class="insight-body">${i.body}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderInactive(data) {
+  const activeEmails = new Set(data.users.map(u => u.email));
+  const inactive = MEMBERS_DATA.filter(m => !activeEmails.has(m.email));
+
+  document.getElementById('inactive-count').textContent = inactive.length + ' of ' + MEMBERS_DATA.length + ' seats unused';
+
+  const grid = document.getElementById('inactive-grid');
+  grid.innerHTML = inactive.map((m, idx) => {
+    const ac = AVATAR_COLORS[(idx + 5) % AVATAR_COLORS.length];
+    const tierBadge = m.tier === 'Premium'
+      ? `<span class="tier-badge tier-premium">Premium</span>`
+      : `<span class="tier-badge tier-standard">Standard</span>`;
+    const statusBadge = m.status === 'Pending'
+      ? `<span class="status-pending">Invite pending</span>` : '';
+    const note = m.note ? `<div class="inactive-note">${m.note}</div>` : '';
+    return `<div class="inactive-item">
+      <div class="avatar" style="background:${ac[0]};color:${ac[1]};opacity:0.6">${initials(m.name)}</div>
+      <div class="inactive-info">
+        <div class="inactive-name">${m.name}</div>
+        <div class="inactive-email">${m.email}</div>
+        ${note}
+      </div>
+      ${statusBadge || tierBadge}
+    </div>`;
+  }).join('');
+}
+
+// ── CSV parser ──
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g,''));
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = vals[i]);
+    return obj;
+  });
+}
+
+function processCSV(text, filename) {
+  try {
+    const rows = parseCSV(text);
+    // Detect period from filename
+    const match = filename.match(/(\d{4}-\d{2}-\d{2})-to-(\d{4}-\d{2}-\d{2})/);
+    let period = 'Uploaded report'; let periodKey = 'upload-' + Date.now();
+    if (match) {
+      const [py, pm] = match[1].split('-');
+      const d = new Date(+py, +pm - 1, 1);            // build in LOCAL time — no UTC rollover
+      period = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      periodKey = py + '-' + pm;
+    }
+
+    const userMap = {};
+    rows.forEach(r => {
+      const email = r.user_email;
+      if (!userMap[email]) {
+        userMap[email] = {
+          email, name: emailToName(email),
+          requests:0, prompt_tokens:0, completion_tokens:0,
+          cache_read:0, web_searches:0, products:{}, models:{}
+        };
+      }
+      const u = userMap[email];
+      u.requests += +r.total_requests || 0;
+      u.prompt_tokens += +r.total_prompt_tokens || 0;
+      u.completion_tokens += +r.total_completion_tokens || 0;
+      u.cache_read += +r.total_cache_read_tokens || 0;
+      u.web_searches += +r.total_web_search_count || 0;
+      const prod = r.product; if (prod) u.products[prod] = (u.products[prod]||0) + (+r.total_requests||0);
+      const model = r.model; if (model) u.models[model] = (u.models[model]||0) + (+r.total_requests||0);
+    });
+
+    const users = Object.values(userMap).map(u => {
+      u.total_tokens = u.prompt_tokens + u.completion_tokens;
+      u.cache_ratio = u.prompt_tokens > 0 ? +(u.cache_read / u.prompt_tokens * 100).toFixed(1) : 0;
+      return u;
+    }).sort((a,b) => b.total_tokens - a.total_tokens);
+
+    const summary = {
+      period, periodKey,
+      total_requests: users.reduce((a,u) => a+u.requests,0),
+      total_prompt_tokens: users.reduce((a,u) => a+u.prompt_tokens,0),
+      total_completion_tokens: users.reduce((a,u) => a+u.completion_tokens,0),
+      total_tokens: users.reduce((a,u) => a+u.total_tokens,0),
+      total_cache_read: users.reduce((a,u) => a+u.cache_read,0),
+      total_web_searches: users.reduce((a,u) => a+u.web_searches,0),
+      unique_users: users.length,
+    };
+
+    const products = {}; const models = {};
+    rows.forEach(r => {
+      const p = r.product;
+      if (p) { if (!products[p]) products[p] = {requests:0,tokens:0}; products[p].requests += +r.total_requests||0; products[p].tokens += +r.total_prompt_tokens||0; }
+      const m = r.model;
+      if (m) { if (!models[m]) models[m] = {requests:0,tokens:0}; models[m].requests += +r.total_requests||0; models[m].tokens += +r.total_prompt_tokens||0; }
+    });
+
+    return { summary, users, products, models };
+  } catch(e) {
+    alert('Could not parse CSV. Please check the file format.\n\n' + e.message);
+    return null;
+  }
+}
+
+function emailToName(email) {
+  const local = email.split('@')[0];
+  const parts = local.split('.');
+  if (parts.length >= 2) return parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + ' ' + parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
+
+// ── File handling ──
+document.getElementById('csv-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data = processCSV(ev.target.result, file.name);
+    if (data) { ingestUpload(data); }
+  };
+  reader.readAsText(file);
+  this.value = '';
+});
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data = processCSV(ev.target.result, file.name);
+    if (data) { ingestUpload(data); }
+  };
+  reader.readAsText(file);
+});
+
+// Close overlay on backdrop click
+document.getElementById('upload-overlay').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
+
+// ── Init ──
+rebuildMonthSelect();
+const _msel = document.getElementById('month-select');
+if (_msel) _msel.addEventListener('change', e => showMonth(e.target.value));
+showMonth(monthKeys()[0]);
+</script>
+</body>
+</html>
