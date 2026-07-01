@@ -1,9 +1,10 @@
+
 {
   "auth": {
     "identityProviders": {
       "azureActiveDirectory": {
         "registration": {
-          ""openIdIssuer": "https://login.microsoftonline.com/9a6d1301-c8fc-49a6-bb48-3357cc6a691e/v2.0",,
+          "openIdIssuer": "https://login.microsoftonline.com/9a6d1301-c8fc-49a6-bb48-3357cc6a691e/v2.0",
           "clientIdSettingName": "AAD_CLIENT_ID",
           "clientSecretSettingName": "AAD_CLIENT_SECRET"
         }
@@ -12,9 +13,8 @@
   },
   "routes": [
     { "route": "/.auth/login/aad", "allowedRoles": ["anonymous", "authenticated"] },
-    { "route": "/login", "rewrite": "/.auth/login/aad", "allowedRoles": ["anonymous", "authenticated"] },
     { "route": "/unauthorized.html", "allowedRoles": ["anonymous", "authenticated"] },
-    { "route": "/*", "allowedRoles": ["viewer"] }
+    { "route": "/*", "allowedRoles": ["authenticated"] }
   ],
   "responseOverrides": {
     "401": { "rewrite": "/unauthorized.html", "statusCode": 403 }
