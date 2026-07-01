@@ -1,4 +1,3 @@
-
 {
   "auth": {
     "identityProviders": {
@@ -12,15 +11,15 @@
     }
   },
   "routes": [
-    { "route": "/.auth/login/aad", "allowedRoles": ["anonymous", "authenticated"] },
+    { "route": "/.auth/*", "allowedRoles": ["anonymous", "authenticated"] },
     { "route": "/unauthorized.html", "allowedRoles": ["anonymous", "authenticated"] },
     { "route": "/*", "allowedRoles": ["authenticated"] }
   ],
   "responseOverrides": {
-    "401": { "rewrite": "/unauthorized.html", "statusCode": 403 }
+    "401": { "redirect": "/.auth/login/aad?post_login_redirect_uri=/", "statusCode": 302 }
   },
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/unauthorized.html", "/.auth/*"]
+    "exclude": ["/unauthorized.html", "/.auth/*", "/*.css", "/*.js", "/*.ico"]
   }
 }
