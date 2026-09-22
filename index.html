@@ -467,7 +467,7 @@
     <div class="spend-grid">
       <div class="spend-metric">
         <div class="spend-metric-label">Monthly plan cost</div>
-        <div class="spend-metric-value">$1,025</div>
+        <div class="spend-metric-value" id="s-monthly-cost">$1,350</div>
         <div class="spend-metric-sub" id="s-seats-total">42 seats total</div>
       </div>
       <div class="spend-metric highlight">
@@ -719,10 +719,13 @@ function renderDashboard(data) {
   });
 
   // Spend metrics
-  const MONTHLY_COST = 1025;
+  const STANDARD_SEAT_PRICE = 25;
+  const PREMIUM_SEAT_PRICE = 125;
   const standardCount = MEMBERS_DATA.filter(m => m.tier === 'Standard').length;
   const premiumCount = MEMBERS_DATA.filter(m => m.tier === 'Premium').length;
   const totalSeats = MEMBERS_DATA.length;
+  const MONTHLY_COST = (standardCount * STANDARD_SEAT_PRICE) + (premiumCount * PREMIUM_SEAT_PRICE);
+  document.getElementById('s-monthly-cost').textContent = '$' + MONTHLY_COST.toLocaleString();
   document.getElementById('s-seats-total').textContent = totalSeats + ' seats total';
   document.getElementById('s-standard-count').textContent = standardCount;
   document.getElementById('s-premium-count').textContent = premiumCount;
