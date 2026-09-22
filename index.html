@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,6 +68,12 @@
   }
   .logo svg { width: 16px; height: 16px; }
   .header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+  .month-select {
+    font-size: 12px; font-weight: 500; color: var(--text);
+    background: #fff; border: 1px solid var(--accent-border);
+    border-radius: 8px; padding: 4px 9px; cursor: pointer; outline: none;
+  }
+  .month-select:hover { border-color: var(--accent); }
   .period-badge {
     font-size: 12px; font-weight: 500;
     background: var(--accent-light);
@@ -75,6 +82,12 @@
     border-radius: 20px;
     padding: 3px 10px;
   }
+  .ghost-btn {
+    font-size: 12px; font-weight: 500; color: var(--text2);
+    background: #fff; border: 1px solid var(--accent-border);
+    border-radius: 8px; padding: 6px 12px; cursor: pointer; margin-right: 8px;
+  }
+  .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
   .upload-btn {
     font-family: 'DM Sans', sans-serif;
     font-size: 13px; font-weight: 500;
@@ -419,13 +432,16 @@
     </div>
     <h1>Claude Usage Analytics</h1>
     <span class="period-badge" id="period-badge">May 2026</span>
+    <select class="month-select" id="month-select" aria-label="Select report month"></select>
   </div>
+  <button class="ghost-btn" onclick="exportData()" title="Download a backup of all uploaded months + members">Export</button>
+  <button class="ghost-btn" onclick="document.getElementById('import-input').click()" title="Restore or merge a backup file">Import</button>
+  <input type="file" id="import-input" accept=".json" style="display:none">
   <button class="upload-btn" onclick="document.getElementById('upload-overlay').classList.add('show')">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     Load new report
   </button>
   <input type="file" id="csv-input" accept=".csv">
-  <input type="file" id="members-input" accept=".csv">
 </header>
 
 <main class="main">
@@ -467,8 +483,8 @@
     <div class="spend-grid">
       <div class="spend-metric">
         <div class="spend-metric-label">Monthly plan cost</div>
-        <div class="spend-metric-value">$1,025</div>
-        <div class="spend-metric-sub" id="s-seats-total">42 seats total</div>
+        <div class="spend-metric-value" id="s-plan-cost">$1,025</div>
+        <div class="spend-metric-sub" id="s-seats-total">29 seats total</div>
       </div>
       <div class="spend-metric highlight">
         <div class="spend-metric-label">Cost per active user</div>
@@ -487,8 +503,8 @@
       </div>
     </div>
     <div class="spend-seats">
-      <span class="seat-badge"><span class="seat-dot" style="background:#2563eb"></span><span id="s-standard-count">39</span> standard seats</span>
-      <span class="seat-badge"><span class="seat-dot" style="background:#6d28d9"></span><span id="s-premium-count">3</span> premium seats</span>
+      <span class="seat-badge"><span class="seat-dot" style="background:#2563eb"></span><span id="s-std-badge">26 standard seats</span></span>
+      <span class="seat-badge"><span class="seat-dot" style="background:#6d28d9"></span><span id="s-prem-badge">3 premium seats</span></span>
       <span class="overage-note">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         $200 overage credit available if usage exceeds plan limit
@@ -581,69 +597,21 @@
 <!-- Upload overlay -->
 <div class="upload-overlay" id="upload-overlay">
   <div class="upload-modal">
-    <h3>Load new data</h3>
-    <p>Upload a spend report to update usage data, or a members export to update your roster and seat counts.</p>
-    <div class="drop-zone" id="drop-zone-spend" onclick="document.getElementById('csv-input').click()" style="margin-bottom:10px">
+    <h3>Load a new usage report</h3>
+    <p>Upload a Claude <strong>spend report</strong> (new month) or a <strong>members</strong> export (updates seats &amp; cost for the selected month).</p>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-input').click()">
       <div class="drop-zone-icon">📊</div>
-      <p><strong>Spend report</strong></p>
-      <p style="margin-top:2px; font-size:12px; color:#9b9a93;">spend-report-*.csv</p>
+      <p><strong>Click to choose a file</strong> or drag and drop</p>
+      <p style="margin-top:4px; font-size:12px;">spend-report-*.csv or members-*.csv</p>
     </div>
-    <div class="drop-zone" id="drop-zone-members" onclick="document.getElementById('members-input').click()">
-      <div class="drop-zone-icon">👥</div>
-      <p><strong>Members export</strong></p>
-      <p style="margin-top:2px; font-size:12px; color:#9b9a93;">members-*.csv</p>
-    </div>
-    <button class="modal-cancel" onclick="document.getElementById('upload-overlay').classList.remove('show')" style="margin-top:16px; display:block; margin-left:auto; margin-right:auto;">Cancel</button>
+    <button class="modal-cancel" onclick="document.getElementById('upload-overlay').classList.remove('show')">Cancel</button>
   </div>
 </div>
 
 <script>
-const EMBEDDED_DATA = {"summary":{"period":"May 2026","total_requests":11927,"total_prompt_tokens":2081934840,"total_completion_tokens":9704572,"total_tokens":2091639412,"total_cache_read":2000974606,"total_web_searches":6,"unique_users":22},"users":[{"email":"anjali.gurnani@centricityresearch.com","name":"Anjali Gurnani","requests":4644,"prompt_tokens":1032631852,"completion_tokens":4100972,"total_tokens":1036732824,"cache_read":1003837416,"cache_ratio":97.2,"web_searches":0,"products":{"Chat":4131,"Claude in Chrome":513},"models":{"claude-haiku-4-5-20251001":127,"claude-opus-4-7":3814,"claude-opus-4-8":317,"claude-sonnet-4-6":386}},{"email":"shakeel.abdul@centricityresearch.com","name":"Shakeel Abdul","requests":1768,"prompt_tokens":497313765,"completion_tokens":1108372,"total_tokens":498422137,"cache_read":475523043,"cache_ratio":95.6,"web_searches":6,"products":{"Chat":1660,"Cowork":83,"Office Agents":25},"models":{"claude-haiku-4-5-20251001":17,"claude-opus-4-7":1638,"claude-opus-4-8":54,"claude-sonnet-4-6":59}},{"email":"cooper.brownlee@centricityresearch.com","name":"Cooper Brownlee","requests":1232,"prompt_tokens":117241755,"completion_tokens":1063595,"total_tokens":118305350,"cache_read":110537128,"cache_ratio":94.3,"web_searches":0,"products":{"Chat":1232},"models":{"claude-sonnet-4-6":1232}},{"email":"baskaran.marichetty@centricityresearch.com","name":"Baskaran Marichetty","requests":400,"prompt_tokens":69039806,"completion_tokens":635664,"total_tokens":69675470,"cache_read":64346105,"cache_ratio":93.2,"web_searches":0,"products":{"Chat":400},"models":{"claude-sonnet-4-6":400}},{"email":"marcha.gatewood@centricityresearch.com","name":"Marcha Gatewood","requests":528,"prompt_tokens":57054426,"completion_tokens":511557,"total_tokens":57565983,"cache_read":53837464,"cache_ratio":94.4,"web_searches":0,"products":{"Chat":528},"models":{"claude-sonnet-4-6":528}},{"email":"jordan.greene@centricityresearch.com","name":"Jordan Greene","requests":495,"prompt_tokens":55309388,"completion_tokens":403036,"total_tokens":55712424,"cache_read":52788540,"cache_ratio":95.4,"web_searches":0,"products":{"Chat":495},"models":{"claude-sonnet-4-6":495}},{"email":"raphael.brochu@centricityresearch.com","name":"Raphael Brochu","requests":244,"prompt_tokens":51447152,"completion_tokens":221763,"total_tokens":51668915,"cache_read":49926097,"cache_ratio":97.0,"web_searches":0,"products":{"Chat":244},"models":{"claude-sonnet-4-6":244}},{"email":"lacey.hood@centricityresearch.com","name":"Lacey Hood","requests":628,"prompt_tokens":49813850,"completion_tokens":343008,"total_tokens":50156858,"cache_read":46421940,"cache_ratio":93.2,"web_searches":0,"products":{"Chat":628},"models":{"claude-sonnet-4-6":628}},{"email":"mani.d@centricityresearch.com","name":"Mani D","requests":190,"prompt_tokens":28652341,"completion_tokens":158833,"total_tokens":28811174,"cache_read":26772020,"cache_ratio":93.4,"web_searches":0,"products":{"Chat":186,"Cowork":4},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-7":3,"claude-sonnet-4-6":186}},{"email":"ashley.morrison@centricityresearch.com","name":"Ashley Morrison","requests":327,"prompt_tokens":25399047,"completion_tokens":154997,"total_tokens":25554044,"cache_read":24392457,"cache_ratio":96.0,"web_searches":0,"products":{"Chat":327},"models":{"claude-sonnet-4-6":327}},{"email":"prudhvi.teja@centricityresearch.com","name":"Prudhvi Teja","requests":245,"prompt_tokens":21374273,"completion_tokens":140076,"total_tokens":21514349,"cache_read":20684299,"cache_ratio":96.8,"web_searches":0,"products":{"Chat":178,"Cowork":45,"Office Agents":22},"models":{"claude-haiku-4-5-20251001":2,"claude-opus-4-6":16,"claude-opus-4-7":49,"claude-sonnet-4-6":178}},{"email":"suman.jakka@centricityresearch.com","name":"Suman Jakka","requests":224,"prompt_tokens":15024547,"completion_tokens":150758,"total_tokens":15175305,"cache_read":14104184,"cache_ratio":93.9,"web_searches":0,"products":{"Chat":33,"Cowork":69,"Office Agents":122},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-7":74,"claude-sonnet-4-6":149}},{"email":"koteeswaran.ramachandran@centricityresearch.com","name":"Koteeswaran Ramachandran","requests":235,"prompt_tokens":12477154,"completion_tokens":221137,"total_tokens":12698291,"cache_read":11682728,"cache_ratio":93.6,"web_searches":0,"products":{"Chat":16,"Claude Code":219},"models":{"claude-haiku-4-5-20251001":39,"claude-sonnet-4-6":196}},{"email":"julia.brown@centricityresearch.com","name":"Julia Brown","requests":167,"prompt_tokens":11573520,"completion_tokens":132871,"total_tokens":11706391,"cache_read":10912511,"cache_ratio":94.3,"web_searches":0,"products":{"Chat":167},"models":{"claude-sonnet-4-6":167}},{"email":"bhuvana.venkataramanan@centricityresearch.com","name":"Bhuvana Venkataramanan","requests":185,"prompt_tokens":11467382,"completion_tokens":137132,"total_tokens":11604514,"cache_read":10891212,"cache_ratio":95.0,"web_searches":0,"products":{"Chat":185},"models":{"claude-sonnet-4-6":185}},{"email":"eric.kemp@centricityresearch.com","name":"Eric Kemp","requests":164,"prompt_tokens":10653831,"completion_tokens":55164,"total_tokens":10708995,"cache_read":9795042,"cache_ratio":91.9,"web_searches":0,"products":{"Chat":164},"models":{"claude-sonnet-4-6":164}},{"email":"katharine.gouthro@centricityresearch.com","name":"Katharine Gouthro","requests":82,"prompt_tokens":6136623,"completion_tokens":70244,"total_tokens":6206867,"cache_read":5911683,"cache_ratio":96.3,"web_searches":0,"products":{"Chat":82},"models":{"claude-sonnet-4-6":82}},{"email":"tristin.farris@centricityresearch.com","name":"Tristin Farris","requests":62,"prompt_tokens":2916284,"completion_tokens":25553,"total_tokens":2941837,"cache_read":2707624,"cache_ratio":92.8,"web_searches":0,"products":{"Chat":62},"models":{"claude-sonnet-4-6":62}},{"email":"anita.rani@centricityresearch.com","name":"Anita Rani","requests":51,"prompt_tokens":2763543,"completion_tokens":39605,"total_tokens":2803148,"cache_read":2608113,"cache_ratio":94.4,"web_searches":0,"products":{"Chat":51},"models":{"claude-sonnet-4-6":51}},{"email":"ellen.smith@centricityresearch.com","name":"Ellen Smith","requests":34,"prompt_tokens":2719901,"completion_tokens":23175,"total_tokens":2743076,"cache_read":2443818,"cache_ratio":89.8,"web_searches":0,"products":{"Chat":34},"models":{"claude-sonnet-4-6":34}},{"email":"shaley@centricityresearch.com","name":"Shaley","requests":16,"prompt_tokens":673728,"completion_tokens":6354,"total_tokens":680082,"cache_read":621391,"cache_ratio":92.2,"web_searches":0,"products":{"Chat":16},"models":{"claude-sonnet-4-6":16}},{"email":"talya.amor@centricityresearch.com","name":"Talya Amor","requests":6,"prompt_tokens":250672,"completion_tokens":706,"total_tokens":251378,"cache_read":229791,"cache_ratio":91.7,"web_searches":0,"products":{"Chat":6},"models":{"claude-sonnet-4-6":6}}],"products":{"Chat":{"requests":10825,"tokens":2019523996},"Claude Code":{"requests":219,"tokens":11682209},"Claude in Chrome":{"requests":513,"tokens":27052260},"Cowork":{"requests":201,"tokens":15874496},"Office Agents":{"requests":169,"tokens":7801879}},"models":{"claude-haiku-4-5-20251001":{"requests":187,"tokens":835513},"claude-opus-4-6":{"requests":16,"tokens":687969},"claude-opus-4-7":{"requests":5578,"tokens":1452204594},"claude-opus-4-8":{"requests":371,"tokens":56888157},"claude-sonnet-4-6":{"requests":5775,"tokens":571318607}}};
+const EMBEDDED_DATA = {"summary":{"period":"May 2026","periodKey":"2026-05","total_requests":11927,"total_prompt_tokens":2081934840,"total_completion_tokens":9704572,"total_tokens":2091639412,"total_cache_read":2000974606,"total_web_searches":6,"unique_users":22},"users":[{"email":"anjali.gurnani@centricityresearch.com","name":"Anjali Gurnani","requests":4644,"prompt_tokens":1032631852,"completion_tokens":4100972,"total_tokens":1036732824,"cache_read":1003837416,"cache_ratio":97.2,"web_searches":0,"products":{"Chat":4131,"Claude in Chrome":513},"models":{"claude-haiku-4-5-20251001":127,"claude-opus-4-7":3814,"claude-opus-4-8":317,"claude-sonnet-4-6":386}},{"email":"shakeel.abdul@centricityresearch.com","name":"Shakeel Abdul","requests":1768,"prompt_tokens":497313765,"completion_tokens":1108372,"total_tokens":498422137,"cache_read":475523043,"cache_ratio":95.6,"web_searches":6,"products":{"Chat":1660,"Cowork":83,"Office Agents":25},"models":{"claude-haiku-4-5-20251001":17,"claude-opus-4-7":1638,"claude-opus-4-8":54,"claude-sonnet-4-6":59}},{"email":"cooper.brownlee@centricityresearch.com","name":"Cooper Brownlee","requests":1232,"prompt_tokens":117241755,"completion_tokens":1063595,"total_tokens":118305350,"cache_read":110537128,"cache_ratio":94.3,"web_searches":0,"products":{"Chat":1232},"models":{"claude-sonnet-4-6":1232}},{"email":"baskaran.marichetty@centricityresearch.com","name":"Baskaran Marichetty","requests":400,"prompt_tokens":69039806,"completion_tokens":635664,"total_tokens":69675470,"cache_read":64346105,"cache_ratio":93.2,"web_searches":0,"products":{"Chat":400},"models":{"claude-sonnet-4-6":400}},{"email":"marcha.gatewood@centricityresearch.com","name":"Marcha Gatewood","requests":528,"prompt_tokens":57054426,"completion_tokens":511557,"total_tokens":57565983,"cache_read":53837464,"cache_ratio":94.4,"web_searches":0,"products":{"Chat":528},"models":{"claude-sonnet-4-6":528}},{"email":"jordan.greene@centricityresearch.com","name":"Jordan Greene","requests":495,"prompt_tokens":55309388,"completion_tokens":403036,"total_tokens":55712424,"cache_read":52788540,"cache_ratio":95.4,"web_searches":0,"products":{"Chat":495},"models":{"claude-sonnet-4-6":495}},{"email":"raphael.brochu@centricityresearch.com","name":"Raphael Brochu","requests":244,"prompt_tokens":51447152,"completion_tokens":221763,"total_tokens":51668915,"cache_read":49926097,"cache_ratio":97.0,"web_searches":0,"products":{"Chat":244},"models":{"claude-sonnet-4-6":244}},{"email":"lacey.hood@centricityresearch.com","name":"Lacey Hood","requests":628,"prompt_tokens":49813850,"completion_tokens":343008,"total_tokens":50156858,"cache_read":46421940,"cache_ratio":93.2,"web_searches":0,"products":{"Chat":628},"models":{"claude-sonnet-4-6":628}},{"email":"mani.d@centricityresearch.com","name":"Mani D","requests":190,"prompt_tokens":28652341,"completion_tokens":158833,"total_tokens":28811174,"cache_read":26772020,"cache_ratio":93.4,"web_searches":0,"products":{"Chat":186,"Cowork":4},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-7":3,"claude-sonnet-4-6":186}},{"email":"ashley.morrison@centricityresearch.com","name":"Ashley Morrison","requests":327,"prompt_tokens":25399047,"completion_tokens":154997,"total_tokens":25554044,"cache_read":24392457,"cache_ratio":96.0,"web_searches":0,"products":{"Chat":327},"models":{"claude-sonnet-4-6":327}},{"email":"prudhvi.teja@centricityresearch.com","name":"Prudhvi Teja","requests":245,"prompt_tokens":21374273,"completion_tokens":140076,"total_tokens":21514349,"cache_read":20684299,"cache_ratio":96.8,"web_searches":0,"products":{"Chat":178,"Cowork":45,"Office Agents":22},"models":{"claude-haiku-4-5-20251001":2,"claude-opus-4-6":16,"claude-opus-4-7":49,"claude-sonnet-4-6":178}},{"email":"suman.jakka@centricityresearch.com","name":"Suman Jakka","requests":224,"prompt_tokens":15024547,"completion_tokens":150758,"total_tokens":15175305,"cache_read":14104184,"cache_ratio":93.9,"web_searches":0,"products":{"Chat":33,"Cowork":69,"Office Agents":122},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-7":74,"claude-sonnet-4-6":149}},{"email":"koteeswaran.ramachandran@centricityresearch.com","name":"Koteeswaran Ramachandran","requests":235,"prompt_tokens":12477154,"completion_tokens":221137,"total_tokens":12698291,"cache_read":11682728,"cache_ratio":93.6,"web_searches":0,"products":{"Chat":16,"Claude Code":219},"models":{"claude-haiku-4-5-20251001":39,"claude-sonnet-4-6":196}},{"email":"julia.brown@centricityresearch.com","name":"Julia Brown","requests":167,"prompt_tokens":11573520,"completion_tokens":132871,"total_tokens":11706391,"cache_read":10912511,"cache_ratio":94.3,"web_searches":0,"products":{"Chat":167},"models":{"claude-sonnet-4-6":167}},{"email":"bhuvana.venkataramanan@centricityresearch.com","name":"Bhuvana Venkataramanan","requests":185,"prompt_tokens":11467382,"completion_tokens":137132,"total_tokens":11604514,"cache_read":10891212,"cache_ratio":95.0,"web_searches":0,"products":{"Chat":185},"models":{"claude-sonnet-4-6":185}},{"email":"eric.kemp@centricityresearch.com","name":"Eric Kemp","requests":164,"prompt_tokens":10653831,"completion_tokens":55164,"total_tokens":10708995,"cache_read":9795042,"cache_ratio":91.9,"web_searches":0,"products":{"Chat":164},"models":{"claude-sonnet-4-6":164}},{"email":"katharine.gouthro@centricityresearch.com","name":"Katharine Gouthro","requests":82,"prompt_tokens":6136623,"completion_tokens":70244,"total_tokens":6206867,"cache_read":5911683,"cache_ratio":96.3,"web_searches":0,"products":{"Chat":82},"models":{"claude-sonnet-4-6":82}},{"email":"tristin.farris@centricityresearch.com","name":"Tristin Farris","requests":62,"prompt_tokens":2916284,"completion_tokens":25553,"total_tokens":2941837,"cache_read":2707624,"cache_ratio":92.8,"web_searches":0,"products":{"Chat":62},"models":{"claude-sonnet-4-6":62}},{"email":"anita.rani@centricityresearch.com","name":"Anita Rani","requests":51,"prompt_tokens":2763543,"completion_tokens":39605,"total_tokens":2803148,"cache_read":2608113,"cache_ratio":94.4,"web_searches":0,"products":{"Chat":51},"models":{"claude-sonnet-4-6":51}},{"email":"ellen.smith@centricityresearch.com","name":"Ellen Smith","requests":34,"prompt_tokens":2719901,"completion_tokens":23175,"total_tokens":2743076,"cache_read":2443818,"cache_ratio":89.8,"web_searches":0,"products":{"Chat":34},"models":{"claude-sonnet-4-6":34}},{"email":"shaley@centricityresearch.com","name":"Shaley","requests":16,"prompt_tokens":673728,"completion_tokens":6354,"total_tokens":680082,"cache_read":621391,"cache_ratio":92.2,"web_searches":0,"products":{"Chat":16},"models":{"claude-sonnet-4-6":16}},{"email":"talya.amor@centricityresearch.com","name":"Talya Amor","requests":6,"prompt_tokens":250672,"completion_tokens":706,"total_tokens":251378,"cache_read":229791,"cache_ratio":91.7,"web_searches":0,"products":{"Chat":6},"models":{"claude-sonnet-4-6":6}}],"products":{"Chat":{"requests":10825,"tokens":2019523996},"Claude Code":{"requests":219,"tokens":11682209},"Claude in Chrome":{"requests":513,"tokens":27052260},"Cowork":{"requests":201,"tokens":15874496},"Office Agents":{"requests":169,"tokens":7801879}},"models":{"claude-haiku-4-5-20251001":{"requests":187,"tokens":835513},"claude-opus-4-6":{"requests":16,"tokens":687969},"claude-opus-4-7":{"requests":5578,"tokens":1452204594},"claude-opus-4-8":{"requests":371,"tokens":56888157},"claude-sonnet-4-6":{"requests":5775,"tokens":571318607}}};
 
-let MEMBERS_DATA = [
-  {"name":"Susannah Haley","email":"shaley@centricityresearch.com","role":"Primary Owner","status":"Active","tier":"Standard"},
-  {"name":"Raphael Brochu","email":"raphael.brochu@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Marcha Gatewood","email":"marcha.gatewood@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Ashley Morrison","email":"ashley.morrison@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Talya Amor","email":"talya.amor@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Amanda Clary-Phillips","email":"amanda.phillips@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Shakeel Abdul","email":"shakeel.abdul@centricityresearch.com","role":"User","status":"Active","tier":"Premium"},
-  {"name":"Anjali Gurnani","email":"anjali.gurnani@centricityresearch.com","role":"User","status":"Active","tier":"Premium"},
-  {"name":"Lacey Hood","email":"lacey.hood@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Jordan Greene","email":"jordan.greene@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Julia Brown","email":"julia.brown@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Prudhvi Teja B","email":"prudhvi.teja@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Govardhan Pothala","email":"govardhan.pothala@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Cooper Brownlee","email":"cooper.brownlee@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Koteeswaran Ramachandran","email":"koteeswaran.ramachandran@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Anita Rani","email":"anita.rani@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Mani Deepak G","email":"mani.d@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Ellen Smith","email":"ellen.smith@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Baskaran Marichetty","email":"baskaran.marichetty@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Eric Kemp","email":"eric.kemp@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Emily Waddington","email":"emily.waddington@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Tristin Farris","email":"tristin.farris@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Navin Raj","email":"navin.raj@centricityresearch.com","role":"User","status":"Active","tier":"Premium"},
-  {"name":"Abinaya Sundaram","email":"abinaya.sundaram@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Abhishek Singhvi","email":"abhishek.singhvi@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Delmas Brown","email":"delmas.brown@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Stephanie Holloway","email":"stephanie.holloway@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Jake Choi","email":"jake.choi@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Jay Sinder","email":"jay.sinder@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Sujeet Kumar Rai","email":"sujeetkumar.rai@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Allison Reichenbach","email":"allison.reichenbach@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Kaylee Bankston","email":"kaylee.bankston@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Tajinder Kaur","email":"tajinder.kaur@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Nicole Gagnon","email":"nicole.gagnon@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Thahmina Rahman","email":"thahmina.rahman@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Patrick Sumdey","email":"patrick.sumdey@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Raj Priyesh","email":"raj.priyesh@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Mainak Malay Saha","email":"mainak.saha@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Chandra Prakash Babu Ponduri","email":"chandra.ponduri@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Jennifer Navin","email":"jennifer.navin@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Lexianna P Lindic","email":"lexiannap.lindic@centricityresearch.com","role":"User","status":"Active","tier":"Standard"},
-  {"name":"Morgan Chavez","email":"morgan.chavez@centricityresearch.com","role":"User","status":"Active","tier":"Standard"}
-];
+const MEMBERS_DATA = [{"name": "Susannah Haley", "email": "shaley@centricityresearch.com", "role": "Primary Owner", "status": "Active", "tier": "Standard"}, {"name": "Raphael Brochu, MBA", "email": "raphael.brochu@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Marcha Gatewood", "email": "marcha.gatewood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Ashley Morrison", "email": "ashley.morrison@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Talya Amor", "email": "talya.amor@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Amanda Clary-Phillips, LPN, CCRC", "email": "amanda.phillips@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Shakeel Abdul", "email": "shakeel.abdul@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Anjali Gurnani", "email": "anjali.gurnani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Lacey Hood", "email": "lacey.hood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jordan Greene, MS, CCRC, ACRP-PM", "email": "jordan.greene@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Julia Brown", "email": "julia.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Prudhvi Teja B", "email": "prudhvi.teja@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Govardhan Pothala", "email": "govardhan.pothala@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Cooper", "email": "cooper.brownlee@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Koteeswaran Ramachandran", "email": "koteeswaran.ramachandran@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anita Rani", "email": "anita.rani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Mani Deepak G", "email": "mani.d@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Ellen Smith", "email": "ellen.smith@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Baskaran Marichetty", "email": "baskaran.marichetty@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Eric Kemp, BSc Honours, CCRC, ACRP-PM", "email": "eric.kemp@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Emily Waddington", "email": "emily.waddington@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tristin Farris", "email": "tristin.farris@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Navin Raj", "email": "navin.raj@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Abinaya Sundaram", "email": "abinaya.sundaram@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Abhishek Singhvi", "email": "abhishek.singhvi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Delmas Brown", "email": "delmas.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Stephanie Holloway", "email": "stephanie.holloway@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jake Choi", "email": "jake.choi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jay Sinder", "email": "jay.sinder@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Sujeet Kumar Rai", "email": "sujeetkumar.rai@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Allison Reichenbach", "email": "allison.reichenbach@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Kaylee Bankston", "email": "kaylee.bankston@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tajinder Kaur", "email": "tajinder.kaur@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Nicole Gagnon", "email": "nicole.gagnon@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Thahmina Rahman", "email": "thahmina.rahman@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Patrick Sumdey", "email": "patrick.sumdey@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Raj Priyesh", "email": "raj.priyesh@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Mainak Malay Saha", "email": "mainak.saha@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Chandra Prakash Babu Ponduri", "email": "chandra.ponduri@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jennifer Navin", "email": "jennifer.navin@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Lexianna P Lindic, BSc, CCRC", "email": "lexiannap.lindic@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Morgan Chavez", "email": "morgan.chavez@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}];
 
 
 const AVATAR_COLORS = [
@@ -690,7 +658,108 @@ function initials(name) {
 
 let charts = {};
 let currentSort = 'tokens';
+// ── Embedded seeds ──
+const EMBEDDED_JUNE = {"summary":{"period":"June 2026","periodKey":"2026-06","total_requests":35566,"total_prompt_tokens":7585061446,"total_completion_tokens":26911628,"total_tokens":7611973074,"total_cache_read":7309044706,"total_web_searches":356,"unique_users":30},"users":[{"email":"navin.raj@centricityresearch.com","name":"Navin Raj","requests":8172,"prompt_tokens":3945219630,"completion_tokens":7661645,"cache_read":3865959061,"web_searches":3,"products":{"Chat":26,"Claude Code":8146},"models":{"claude-haiku-4-5-20251001":20,"claude-opus-4-8":8152},"total_tokens":3952881275,"cache_ratio":98},{"email":"anjali.gurnani@centricityresearch.com","name":"Anjali Gurnani","requests":5636,"prompt_tokens":1156160844,"completion_tokens":6036256,"cache_read":1120205124,"web_searches":22,"products":{"Chat":4034,"Claude in Chrome":1602},"models":{"claude-haiku-4-5-20251001":414,"claude-opus-4-7":285,"claude-opus-4-8":3734,"claude-sonnet-4-6":1203},"total_tokens":1162197100,"cache_ratio":96.9},{"email":"shakeel.abdul@centricityresearch.com","name":"Shakeel Abdul","requests":4982,"prompt_tokens":837495844,"completion_tokens":614054,"cache_read":761491664,"web_searches":23,"products":{"Claude in Chrome":4523,"Chat":445,"Cowork":14},"models":{"claude-sonnet-4-6":3274,"claude-haiku-4-5-20251001":1671,"claude-fable-5":21,"claude-opus-4-8":16},"total_tokens":838109898,"cache_ratio":90.9},{"email":"baskaran.marichetty@centricityresearch.com","name":"Baskaran Marichetty","requests":1405,"prompt_tokens":241953717,"completion_tokens":1136612,"cache_read":227835758,"web_searches":29,"products":{"Chat":1405},"models":{"claude-sonnet-4-6":1274,"claude-haiku-4-5-20251001":7,"claude-opus-4-8":124},"total_tokens":243090329,"cache_ratio":94.2},{"email":"koteeswaran.ramachandran@centricityresearch.com","name":"Koteeswaran Ramachandran","requests":2764,"prompt_tokens":234461381,"completion_tokens":2495760,"cache_read":225562433,"web_searches":0,"products":{"Chat":21,"Claude Code":2743},"models":{"claude-haiku-4-5-20251001":278,"claude-sonnet-4-6":2486},"total_tokens":236957141,"cache_ratio":96.2},{"email":"abhishek.singhvi@centricityresearch.com","name":"Abhishek Singhvi","requests":1849,"prompt_tokens":209435878,"completion_tokens":1840250,"cache_read":197351431,"web_searches":17,"products":{"Chat":623,"Claude Code":1226},"models":{"claude-sonnet-4-6":1378,"claude-haiku-4-5-20251001":411,"claude-opus-4-8":60},"total_tokens":211276128,"cache_ratio":94.2},{"email":"cooper.brownlee@centricityresearch.com","name":"Cooper Brownlee","requests":1312,"prompt_tokens":174279204,"completion_tokens":669791,"cache_read":167179328,"web_searches":78,"products":{"Chat":1312},"models":{"claude-haiku-4-5-20251001":21,"claude-sonnet-4-6":1291},"total_tokens":174948995,"cache_ratio":95.9},{"email":"anita.rani@centricityresearch.com","name":"Anita Rani","requests":2281,"prompt_tokens":161903940,"completion_tokens":2322184,"cache_read":155384300,"web_searches":0,"products":{"Chat":22,"Claude Code":2259},"models":{"claude-haiku-4-5-20251001":365,"claude-opus-4-8":3,"claude-sonnet-4-6":1913},"total_tokens":164226124,"cache_ratio":96},{"email":"jordan.greene@centricityresearch.com","name":"Jordan Greene","requests":917,"prompt_tokens":146278274,"completion_tokens":587919,"cache_read":141457891,"web_searches":52,"products":{"Chat":917},"models":{"claude-haiku-4-5-20251001":4,"claude-sonnet-4-6":913},"total_tokens":146866193,"cache_ratio":96.7},{"email":"ellen.smith@centricityresearch.com","name":"Ellen Smith","requests":883,"prompt_tokens":81012711,"completion_tokens":463130,"cache_read":76245314,"web_searches":28,"products":{"Chat":883},"models":{"claude-haiku-4-5-20251001":26,"claude-sonnet-4-6":857},"total_tokens":81475841,"cache_ratio":94.1},{"email":"marcha.gatewood@centricityresearch.com","name":"Marcha Gatewood","requests":683,"prompt_tokens":73358532,"completion_tokens":330631,"cache_read":68363499,"web_searches":2,"products":{"Chat":683},"models":{"claude-haiku-4-5-20251001":16,"claude-sonnet-4-6":667},"total_tokens":73689163,"cache_ratio":93.2},{"email":"govardhan.pothala@centricityresearch.com","name":"Govardhan Pothala","requests":671,"prompt_tokens":45453655,"completion_tokens":431544,"cache_read":40976071,"web_searches":0,"products":{"Chat":4,"Office Agents":667},"models":{"claude-sonnet-4-6":4,"claude-haiku-4-5-20251001":328,"claude-opus-4-8":339},"total_tokens":45885199,"cache_ratio":90.1},{"email":"shaley@centricityresearch.com","name":"Shaley","requests":408,"prompt_tokens":34487521,"completion_tokens":227344,"cache_read":33210846,"web_searches":2,"products":{"Chat":408},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-8":17,"claude-sonnet-4-6":390},"total_tokens":34714865,"cache_ratio":96.3},{"email":"ashley.morrison@centricityresearch.com","name":"Ashley Morrison","requests":337,"prompt_tokens":32966365,"completion_tokens":194959,"cache_read":31176915,"web_searches":4,"products":{"Chat":337},"models":{"claude-haiku-4-5-20251001":3,"claude-sonnet-4-6":334},"total_tokens":33161324,"cache_ratio":94.6},{"email":"suman.jakka@centricityresearch.com","name":"Suman Jakka","requests":679,"prompt_tokens":27057471,"completion_tokens":256027,"cache_read":25430402,"web_searches":3,"products":{"Cowork":42,"Office Agents":637},"models":{"claude-haiku-4-5-20251001":396,"claude-sonnet-4-6":193,"claude-opus-4-8":90},"total_tokens":27313498,"cache_ratio":94},{"email":"raphael.brochu@centricityresearch.com","name":"Raphael Brochu","requests":102,"prompt_tokens":26859562,"completion_tokens":75022,"cache_read":24894446,"web_searches":2,"products":{"Chat":102},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-4-6":100},"total_tokens":26934584,"cache_ratio":92.7},{"email":"prudhvi.teja@centricityresearch.com","name":"Prudhvi Teja","requests":480,"prompt_tokens":25440590,"completion_tokens":367072,"cache_read":23102612,"web_searches":6,"products":{"Chat":102,"Office Agents":378},"models":{"claude-sonnet-4-6":102,"claude-haiku-4-5-20251001":182,"claude-opus-4-7":196},"total_tokens":25807662,"cache_ratio":90.8},{"email":"lacey.hood@centricityresearch.com","name":"Lacey Hood","requests":322,"prompt_tokens":21032565,"completion_tokens":140764,"cache_read":20072218,"web_searches":5,"products":{"Chat":322},"models":{"claude-haiku-4-5-20251001":5,"claude-sonnet-4-6":317},"total_tokens":21173329,"cache_ratio":95.4},{"email":"bhuvana.venkataramanan@centricityresearch.com","name":"Bhuvana Venkataramanan","requests":291,"prompt_tokens":18890311,"completion_tokens":244394,"cache_read":17675889,"web_searches":18,"products":{"Chat":291},"models":{"claude-haiku-4-5-20251001":11,"claude-sonnet-4-6":280},"total_tokens":19134705,"cache_ratio":93.6},{"email":"julia.brown@centricityresearch.com","name":"Julia Brown","requests":263,"prompt_tokens":16543012,"completion_tokens":167916,"cache_read":15800613,"web_searches":9,"products":{"Chat":263},"models":{"claude-haiku-4-5-20251001":10,"claude-sonnet-4-6":216,"claude-sonnet-5":37},"total_tokens":16710928,"cache_ratio":95.5},{"email":"abinaya.sundaram@centricityresearch.com","name":"Abinaya Sundaram","requests":193,"prompt_tokens":14674841,"completion_tokens":194468,"cache_read":13858066,"web_searches":0,"products":{"Claude Code":193},"models":{"claude-haiku-4-5-20251001":8,"claude-sonnet-4-6":185},"total_tokens":14869309,"cache_ratio":94.4},{"email":"eric.kemp@centricityresearch.com","name":"Eric Kemp","requests":201,"prompt_tokens":13207658,"completion_tokens":72832,"cache_read":12537581,"web_searches":20,"products":{"Chat":201},"models":{"claude-haiku-4-5-20251001":7,"claude-sonnet-4-6":194},"total_tokens":13280490,"cache_ratio":94.9},{"email":"tristin.farris@centricityresearch.com","name":"Tristin Farris","requests":276,"prompt_tokens":11918861,"completion_tokens":88467,"cache_read":10407100,"web_searches":0,"products":{"Chat":276},"models":{"claude-haiku-4-5-20251001":16,"claude-sonnet-4-6":260},"total_tokens":12007328,"cache_ratio":87.3},{"email":"delmas.brown@centricityresearch.com","name":"Delmas Brown","requests":157,"prompt_tokens":10456196,"completion_tokens":160838,"cache_read":9913401,"web_searches":0,"products":{"Chat":157},"models":{"claude-haiku-4-5-20251001":4,"claude-sonnet-4-6":153},"total_tokens":10617034,"cache_ratio":94.8},{"email":"amanda.phillips@centricityresearch.com","name":"Amanda Phillips","requests":123,"prompt_tokens":7592524,"completion_tokens":79538,"cache_read":7213991,"web_searches":0,"products":{"Chat":104,"Office Agents":19},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-4-6":103,"claude-opus-4-8":19},"total_tokens":7672062,"cache_ratio":95},{"email":"mani.d@centricityresearch.com","name":"Mani D","requests":28,"prompt_tokens":7085374,"completion_tokens":15836,"cache_read":6398689,"web_searches":0,"products":{"Chat":28},"models":{"claude-sonnet-4-6":28},"total_tokens":7101210,"cache_ratio":90.3},{"email":"talya.amor@centricityresearch.com","name":"Talya Amor","requests":77,"prompt_tokens":5753883,"completion_tokens":9435,"cache_read":5611458,"web_searches":1,"products":{"Chat":77},"models":{"claude-sonnet-4-6":77},"total_tokens":5763318,"cache_ratio":97.5},{"email":"alexandra.walton@centricityresearch.com","name":"Alexandra Walton","requests":46,"prompt_tokens":2826493,"completion_tokens":15844,"cache_read":2548794,"web_searches":29,"products":{"Chat":46},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-4-6":44},"total_tokens":2842337,"cache_ratio":90.2},{"email":"emily.waddington@centricityresearch.com","name":"Emily Waddington","requests":22,"prompt_tokens":983134,"completion_tokens":6181,"cache_read":940785,"web_searches":0,"products":{"Chat":22},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-4-6":21},"total_tokens":989315,"cache_ratio":95.7},{"email":"katharine.gouthro@centricityresearch.com","name":"Katharine Gouthro","requests":6,"prompt_tokens":271475,"completion_tokens":4915,"cache_read":239026,"web_searches":3,"products":{"Chat":6},"models":{"claude-sonnet-4-6":6},"total_tokens":276390,"cache_ratio":88}],"products":{"Claude in Chrome":{"requests":6125,"tokens":917583547},"Chat":{"requests":13117,"tokens":2151664220},"Claude Code":{"requests":14567,"tokens":4424118962},"Cowork":{"requests":56,"tokens":2300862},"Office Agents":{"requests":1701,"tokens":89393855}},"models":{"claude-sonnet-4-6":{"requests":18263,"tokens":2443463386},"claude-haiku-4-5-20251001":{"requests":4210,"tokens":34351956},"claude-opus-4-8":{"requests":12554,"tokens":4988049053},"claude-fable-5":{"requests":21,"tokens":2704672},"claude-opus-4-7":{"requests":481,"tokens":112799928},"claude-sonnet-5":{"requests":37,"tokens":3692451}}};
+const EMBEDDED_JULY = {"summary":{"period":"July 2026","periodKey":"2026-07","total_requests":18697,"total_prompt_tokens":4650909960,"total_completion_tokens":14025024,"total_tokens":4664934984,"total_cache_read":4513661280,"total_web_searches":145,"unique_users":34},"users":[{"email":"navin.raj@centricityresearch.com","name":"Navin Raj","requests":2868,"prompt_tokens":1396434503,"completion_tokens":2434176,"cache_read":1359749973,"web_searches":1,"products":{"Chat":3,"Claude Code":2865},"models":{"claude-haiku-4-5-20251001":3,"claude-opus-4-8":2865},"total_tokens":1398868679,"cache_ratio":97.4},{"email":"koteeswaran.ramachandran@centricityresearch.com","name":"Koteeswaran Ramachandran","requests":4008,"prompt_tokens":1302467675,"completion_tokens":3304223,"cache_read":1267240510,"web_searches":5,"products":{"Claude Code":4008},"models":{"claude-haiku-4-5-20251001":26,"claude-sonnet-4-6":345,"claude-sonnet-5":3637},"total_tokens":1305771898,"cache_ratio":97.3},{"email":"anjali.gurnani@centricityresearch.com","name":"Anjali Gurnani","requests":4271,"prompt_tokens":1012319858,"completion_tokens":2674076,"cache_read":985022629,"web_searches":34,"products":{"Chat":2427,"Claude in Chrome":1264,"Cowork":580},"models":{"claude-fable-5":2142,"claude-haiku-4-5-20251001":278,"claude-opus-4-8":850,"claude-sonnet-4-6":1,"claude-sonnet-5":1000},"total_tokens":1014993934,"cache_ratio":97.3},{"email":"anita.rani@centricityresearch.com","name":"Anita Rani","requests":1812,"prompt_tokens":241661528,"completion_tokens":1403019,"cache_read":235166329,"web_searches":0,"products":{"Claude Code":1812},"models":{"claude-haiku-4-5-20251001":39,"claude-sonnet-4-6":25,"claude-sonnet-5":1748},"total_tokens":243064547,"cache_ratio":97.3},{"email":"cooper.brownlee@centricityresearch.com","name":"Cooper Brownlee","requests":905,"prompt_tokens":107989009,"completion_tokens":528288,"cache_read":103528516,"web_searches":25,"products":{"Chat":905},"models":{"claude-haiku-4-5-20251001":35,"claude-sonnet-4-6":174,"claude-sonnet-5":696},"total_tokens":108517297,"cache_ratio":95.9},{"email":"abhishek.singhvi@centricityresearch.com","name":"Abhishek Singhvi","requests":529,"prompt_tokens":101403187,"completion_tokens":562838,"cache_read":99094621,"web_searches":4,"products":{"Chat":431,"Claude Code":98},"models":{"claude-haiku-4-5-20251001":52,"claude-sonnet-4-6":165,"claude-sonnet-5":312},"total_tokens":101966025,"cache_ratio":97.7},{"email":"ellen.smith@centricityresearch.com","name":"Ellen Smith","requests":633,"prompt_tokens":96935834,"completion_tokens":392254,"cache_read":93363634,"web_searches":5,"products":{"Chat":633},"models":{"claude-haiku-4-5-20251001":16,"claude-sonnet-4-6":78,"claude-sonnet-5":539},"total_tokens":97328088,"cache_ratio":96.3},{"email":"jordan.greene@centricityresearch.com","name":"Jordan Greene","requests":396,"prompt_tokens":57530731,"completion_tokens":218163,"cache_read":54574216,"web_searches":0,"products":{"Chat":393,"Cowork":3},"models":{"claude-haiku-4-5-20251001":7,"claude-sonnet-4-6":120,"claude-sonnet-5":269},"total_tokens":57748894,"cache_ratio":94.9},{"email":"baskaran.marichetty@centricityresearch.com","name":"Baskaran Marichetty","requests":447,"prompt_tokens":49636231,"completion_tokens":517820,"cache_read":46513050,"web_searches":24,"products":{"Chat":447},"models":{"claude-haiku-4-5-20251001":6,"claude-sonnet-4-6":1,"claude-sonnet-5":440},"total_tokens":50154051,"cache_ratio":93.7},{"email":"julia.brown@centricityresearch.com","name":"Julia Brown","requests":345,"prompt_tokens":44097970,"completion_tokens":250299,"cache_read":43031312,"web_searches":5,"products":{"Chat":345},"models":{"claude-haiku-4-5-20251001":9,"claude-sonnet-4-6":3,"claude-sonnet-5":333},"total_tokens":44348269,"cache_ratio":97.6},{"email":"lacey.hood@centricityresearch.com","name":"Lacey Hood","requests":158,"prompt_tokens":33233116,"completion_tokens":166607,"cache_read":31769396,"web_searches":0,"products":{"Chat":158},"models":{"claude-opus-4-8":148,"claude-fable-5":6,"claude-haiku-4-5-20251001":4},"total_tokens":33399723,"cache_ratio":95.6},{"email":"marcha.gatewood@centricityresearch.com","name":"Marcha Gatewood","requests":243,"prompt_tokens":33158035,"completion_tokens":207572,"cache_read":31216120,"web_searches":0,"products":{"Chat":243},"models":{"claude-haiku-4-5-20251001":5,"claude-sonnet-4-6":121,"claude-sonnet-5":117},"total_tokens":33365607,"cache_ratio":94.1},{"email":"shaley@centricityresearch.com","name":"Shaley","requests":217,"prompt_tokens":26522118,"completion_tokens":153732,"cache_read":25326854,"web_searches":0,"products":{"Chat":217},"models":{"claude-haiku-4-5-20251001":4,"claude-opus-4-8":119,"claude-sonnet-4-6":37,"claude-sonnet-5":57},"total_tokens":26675850,"cache_ratio":95.5},{"email":"delmas.brown@centricityresearch.com","name":"Delmas Brown","requests":229,"prompt_tokens":22868201,"completion_tokens":174332,"cache_read":21683725,"web_searches":3,"products":{"Chat":229},"models":{"claude-fable-5":149,"claude-haiku-4-5-20251001":11,"claude-sonnet-4-6":31,"claude-sonnet-5":38},"total_tokens":23042533,"cache_ratio":94.8},{"email":"talya.amor@centricityresearch.com","name":"Talya Amor","requests":109,"prompt_tokens":18733208,"completion_tokens":81315,"cache_read":18210363,"web_searches":0,"products":{"Chat":109},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-5":107},"total_tokens":18814523,"cache_ratio":97.2},{"email":"prudhvi.teja@centricityresearch.com","name":"Prudhvi Teja","requests":257,"prompt_tokens":16373423,"completion_tokens":149466,"cache_read":15004107,"web_searches":0,"products":{"Office Agents":257},"models":{"claude-haiku-4-5-20251001":125,"claude-opus-4-8":132},"total_tokens":16522889,"cache_ratio":91.6},{"email":"bhuvana.venkataramanan@centricityresearch.com","name":"Bhuvana Venkataramanan","requests":250,"prompt_tokens":15099033,"completion_tokens":202556,"cache_read":14049290,"web_searches":2,"products":{"Chat":68,"Claude Code":182},"models":{"claude-haiku-4-5-20251001":29,"claude-sonnet-5":221},"total_tokens":15301589,"cache_ratio":93},{"email":"govardhan.pothala@centricityresearch.com","name":"Govardhan Pothala","requests":270,"prompt_tokens":14448516,"completion_tokens":165679,"cache_read":13329102,"web_searches":0,"products":{"Office Agents":270},"models":{"claude-fable-5":125,"claude-haiku-4-5-20251001":145},"total_tokens":14614195,"cache_ratio":92.3},{"email":"amanda.phillips@centricityresearch.com","name":"Amanda Phillips","requests":198,"prompt_tokens":12582330,"completion_tokens":121782,"cache_read":12102850,"web_searches":0,"products":{"Chat":56,"Office Agents":142},"models":{"claude-sonnet-4-6":56,"claude-haiku-4-5-20251001":53,"claude-sonnet-5":89},"total_tokens":12704112,"cache_ratio":96.2},{"email":"raphael.brochu@centricityresearch.com","name":"Raphael Brochu","requests":66,"prompt_tokens":11761884,"completion_tokens":51311,"cache_read":10981352,"web_searches":0,"products":{"Chat":66},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-4-6":15,"claude-sonnet-5":50},"total_tokens":11813195,"cache_ratio":93.4},{"email":"shakeel.abdul@centricityresearch.com","name":"Shakeel Abdul","requests":135,"prompt_tokens":10683179,"completion_tokens":33694,"cache_read":9791466,"web_searches":11,"products":{"Chat":135},"models":{"claude-haiku-4-5-20251001":9,"claude-sonnet-4-6":126},"total_tokens":10716873,"cache_ratio":91.7},{"email":"jake.choi@centricityresearch.com","name":"Jake Choi","requests":52,"prompt_tokens":7428614,"completion_tokens":38126,"cache_read":6898330,"web_searches":15,"products":{"Chat":52},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-5":50},"total_tokens":7466740,"cache_ratio":92.9},{"email":"sujeetkumar.rai@centricityresearch.com","name":"Sujeetkumar Rai","requests":47,"prompt_tokens":3350702,"completion_tokens":42113,"cache_read":3064978,"web_searches":4,"products":{"Chat":47},"models":{"claude-fable-5":46,"claude-haiku-4-5-20251001":1},"total_tokens":3392815,"cache_ratio":91.5},{"email":"tristin.farris@centricityresearch.com","name":"Tristin Farris","requests":54,"prompt_tokens":3093075,"completion_tokens":26252,"cache_read":2588158,"web_searches":0,"products":{"Chat":54},"models":{"claude-haiku-4-5-20251001":5,"claude-sonnet-4-6":13,"claude-sonnet-5":36},"total_tokens":3119327,"cache_ratio":83.7},{"email":"debayan.ghosh@centricityresearch.com","name":"Debayan Ghosh","requests":44,"prompt_tokens":3016443,"completion_tokens":45393,"cache_read":2873506,"web_searches":1,"products":{"Chat":44},"models":{"claude-fable-5":28,"claude-haiku-4-5-20251001":2,"claude-sonnet-4-6":14},"total_tokens":3061836,"cache_ratio":95.3},{"email":"stephanie.holloway@centricityresearch.com","name":"Stephanie Holloway","requests":52,"prompt_tokens":2628624,"completion_tokens":39915,"cache_read":2490608,"web_searches":3,"products":{"Chat":37,"Claude Design":15},"models":{"claude-haiku-4-5-20251001":6,"claude-sonnet-5":33,"claude-opus-4-8":13},"total_tokens":2668539,"cache_ratio":94.7},{"email":"ashley.morrison@centricityresearch.com","name":"Ashley Morrison","requests":35,"prompt_tokens":1868482,"completion_tokens":18995,"cache_read":1775707,"web_searches":1,"products":{"Chat":35},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-5":33},"total_tokens":1887477,"cache_ratio":95},{"email":"eric.kemp@centricityresearch.com","name":"Eric Kemp","requests":19,"prompt_tokens":1502773,"completion_tokens":9764,"cache_read":1334014,"web_searches":2,"products":{"Chat":19},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-4-6":17,"claude-sonnet-5":1},"total_tokens":1512537,"cache_ratio":88.8},{"email":"tajinder.kaur@centricityresearch.com","name":"Tajinder Kaur","requests":20,"prompt_tokens":1210087,"completion_tokens":5632,"cache_read":1087298,"web_searches":0,"products":{"Chat":20},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-5":19},"total_tokens":1215719,"cache_ratio":89.9},{"email":"kaylee.bankston@centricityresearch.com","name":"Kaylee Bankston","requests":7,"prompt_tokens":326106,"completion_tokens":1437,"cache_read":295488,"web_searches":0,"products":{"Chat":7},"models":{"claude-sonnet-5":7},"total_tokens":327543,"cache_ratio":90.6},{"email":"allison.reichenbach@centricityresearch.com","name":"Allison Reichenbach","requests":5,"prompt_tokens":259424,"completion_tokens":1034,"cache_read":240218,"web_searches":0,"products":{"Chat":5},"models":{"claude-sonnet-5":5},"total_tokens":260458,"cache_ratio":92.6},{"email":"abinaya.sundaram@centricityresearch.com","name":"Abinaya Sundaram","requests":10,"prompt_tokens":237233,"completion_tokens":1296,"cache_read":224381,"web_searches":0,"products":{"Claude Code":10},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-4-6":8},"total_tokens":238529,"cache_ratio":94.6},{"email":"alexandra.walton@centricityresearch.com","name":"Alexandra Walton","requests":2,"prompt_tokens":48828,"completion_tokens":1865,"cache_read":39179,"web_searches":0,"products":{"Chat":2},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-5":1},"total_tokens":50693,"cache_ratio":80.2},{"email":"(org service usage)","name":"(org service usage)","requests":4,"prompt_tokens":0,"completion_tokens":0,"cache_read":0,"web_searches":0,"products":{"(other)":4},"models":{},"total_tokens":0,"cache_ratio":0}],"products":{"Chat":{"requests":7187,"tokens":1320997660},"(other)":{"requests":4,"tokens":0},"Claude Code":{"requests":8975,"tokens":2957302893},"Office Agents":{"requests":669,"tokens":39195156},"Cowork":{"requests":583,"tokens":172919783},"Claude Design":{"requests":15,"tokens":524089},"Claude in Chrome":{"requests":1264,"tokens":159970379}},"models":{"claude-fable-5":{"requests":2496,"tokens":615143127},"claude-opus-4-8":{"requests":4127,"tokens":1735634384},"claude-haiku-4-5-20251001":{"requests":882,"tokens":1966656},"claude-sonnet-5":{"requests":9838,"tokens":2110461822},"claude-sonnet-4-6":{"requests":1350,"tokens":187703971}}};
+
+// ── Month store: persists uploaded months across sessions ──
+const STORE_KEY = 'claudeUsageMonths_v1';
+function loadStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch(e){ return {}; } }
+function persistStore(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(monthStore)); } catch(e){ console.warn('Storage unavailable:', e); } }
+let monthStore = Object.assign({ '2026-05': EMBEDDED_DATA, '2026-06': EMBEDDED_JUNE, '2026-07': EMBEDDED_JULY }, loadStore());
+function monthKeys(){ return Object.keys(monthStore).sort().reverse(); }
+function rebuildMonthSelect(selected){
+  const sel = document.getElementById('month-select');
+  if (!sel) return;
+  const keys = monthKeys();
+  sel.innerHTML = keys.map(k => '<option value="'+k+'">'+monthStore[k].summary.period+'</option>').join('');
+  sel.value = selected || keys[0];
+}
+function showMonth(key){
+  if (!monthStore[key]) return;
+  renderDashboard(monthStore[key]);
+  const sel = document.getElementById('month-select');
+  if (sel) sel.value = key;
+}
+function ingestUpload(data){
+  let key = data.summary.periodKey;
+  if (!key || key.indexOf('upload-') === 0) key = 'upload-' + Date.now();
+  data.summary.periodKey = key;
+  const existing = monthStore[key];
+  if (existing && existing.members) data.members = existing.members;   // keep members on spend re-upload
+  monthStore[key] = data;
+  persistStore();
+  rebuildMonthSelect(key);
+  showMonth(key);
+  document.getElementById('upload-overlay').classList.remove('show');
+}
+
+// Detect a members export vs a spend report from its header row
+function isMembersCSV(text){
+  const first = (text.split(/\r?\n/)[0] || '').toLowerCase();
+  return first.includes('seat tier') || (first.includes('email') && first.includes('status') && first.includes('role'));
+}
+function parseMembers(text){
+  return parseCSV(text).map(r => ({
+    name:  (r['Name'] || r['name'] || '').trim(),
+    email: (r['Email'] || r['email'] || '').trim().toLowerCase(),
+    role:  (r['Role'] || r['role'] || 'User').trim(),
+    status:(r['Status'] || r['status'] || 'Active').trim(),
+    tier:  (r['Seat Tier'] || r['seat tier'] || r['Tier'] || 'Standard').trim()
+  })).filter(m => m.email);
+}
+function ingestMembers(text){
+  const members = parseMembers(text);
+  if (!members.length){ alert('No members found in that file.'); return; }
+  const key = (document.getElementById('month-select') || {}).value || monthKeys()[0];
+  if (!key || !monthStore[key]){ alert('Pick a month first, then upload the members file for it.'); return; }
+  monthStore[key] = Object.assign({}, monthStore[key], { members });
+  persistStore();
+  showMonth(key);
+  document.getElementById('upload-overlay').classList.remove('show');
+  const st = members.filter(m => m.tier==='Standard' && (m.status||'Active').toLowerCase()==='active').length;
+  const pr = members.filter(m => m.tier==='Premium' && (m.status||'Active').toLowerCase()==='active').length;
+  alert('Members applied to ' + monthStore[key].summary.period + ': ' + st + ' standard + ' + pr + ' premium = $' + (st*RATE_STANDARD+pr*RATE_PREMIUM).toLocaleString() + '/mo');
+}
+function handleUploadedFile(text, filename){
+  if (isMembersCSV(text)) ingestMembers(text);
+  else { const data = processCSV(text, filename); if (data) ingestUpload(data); }
+}
+
+// Export/import all stored months (backup + move between URLs)
+function exportData(){
+  const blob = new Blob([JSON.stringify(monthStore, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'claude-usage-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importData(text){
+  let obj;
+  try { obj = JSON.parse(text); } catch(e){ alert('That file is not valid backup JSON.'); return; }
+  if (!obj || typeof obj !== 'object'){ alert('Unexpected backup format.'); return; }
+  Object.keys(obj).forEach(k => { monthStore[k] = obj[k]; });   // merge; imported months win
+  persistStore();
+  rebuildMonthSelect(monthKeys()[0]);
+  showMonth(monthKeys()[0]);
+  alert('Imported ' + Object.keys(obj).length + ' month(s).');
+}
+
 let currentData = null;
+
+const RATE_STANDARD = 25;
+const RATE_PREMIUM = 125;
+
+// Seat counts + cost for a month: use the month's own members if uploaded, else the current default roster.
+function seatsFor(monthData){
+  const roster = (monthData && monthData.members && monthData.members.length) ? monthData.members : MEMBERS_DATA;
+  const active = roster.filter(m => (m.status || 'Active').toLowerCase() === 'active');
+  const standard = active.filter(m => m.tier === 'Standard').length;
+  const premium  = active.filter(m => m.tier === 'Premium').length;
+  return { roster, standard, premium, total: standard + premium,
+           cost: standard * RATE_STANDARD + premium * RATE_PREMIUM };
+}
 
 function renderDashboard(data) {
   currentData = data;
@@ -710,27 +779,30 @@ function renderDashboard(data) {
   document.getElementById('m-users-sub').textContent = 'Centricity Research team';
   document.getElementById('m-avg').textContent = fmtNum(Math.round(s.total_tokens / s.total_requests));
 
-  // Enrich users with seat tier from members data
+  // Seat config for this month (members-driven)
+  const seats = seatsFor(data);
+
+  // Enrich users with seat tier from this month's roster
   const memberMap = {};
-  MEMBERS_DATA.forEach(m => { memberMap[m.email] = m; });
+  seats.roster.forEach(m => { memberMap[m.email] = m; });
   data.users.forEach(u => {
     const m = memberMap[u.email];
     u.tier = m ? m.tier : 'Standard';
   });
 
+  // Plan cost + seat badges (computed from membership)
+  const MONTHLY_COST = seats.cost;
+  document.getElementById('s-plan-cost').textContent = '$' + MONTHLY_COST.toLocaleString();
+  document.getElementById('s-seats-total').textContent = seats.total + ' seats total';
+  document.getElementById('s-std-badge').textContent = seats.standard + ' standard seats';
+  document.getElementById('s-prem-badge').textContent = seats.premium + ' premium seats';
+
   // Spend metrics
-  const MONTHLY_COST = 1025;
-  const standardCount = MEMBERS_DATA.filter(m => m.tier === 'Standard').length;
-  const premiumCount = MEMBERS_DATA.filter(m => m.tier === 'Premium').length;
-  const totalSeats = MEMBERS_DATA.length;
-  document.getElementById('s-seats-total').textContent = totalSeats + ' seats total';
-  document.getElementById('s-standard-count').textContent = standardCount;
-  document.getElementById('s-premium-count').textContent = premiumCount;
   const costPerUser = (MONTHLY_COST / s.unique_users).toFixed(2);
   const costPerMToken = (MONTHLY_COST / (s.total_tokens / 1e6)).toFixed(2);
   const costPerReq = (MONTHLY_COST / s.total_requests).toFixed(3);
   document.getElementById('s-per-user').textContent = '$' + costPerUser;
-  document.getElementById('s-per-user-sub').textContent = s.unique_users + ' active users this month';
+  document.getElementById('s-per-user-sub').textContent = s.unique_users + ' of ' + seats.total + ' seats active';
   document.getElementById('s-per-token').textContent = '$' + costPerMToken;
   document.getElementById('s-per-req').textContent = '$' + costPerReq;
 
@@ -1045,10 +1117,11 @@ function renderInsights(data) {
 }
 
 function renderInactive(data) {
+  const roster = (data.members && data.members.length) ? data.members : MEMBERS_DATA;
   const activeEmails = new Set(data.users.map(u => u.email));
-  const inactive = MEMBERS_DATA.filter(m => !activeEmails.has(m.email));
+  const inactive = roster.filter(m => !activeEmails.has(m.email));
 
-  document.getElementById('inactive-count').textContent = inactive.length + ' of ' + MEMBERS_DATA.length + ' seats unused';
+  document.getElementById('inactive-count').textContent = inactive.length + ' of ' + roster.length + ' seats unused';
 
   const grid = document.getElementById('inactive-grid');
   grid.innerHTML = inactive.map((m, idx) => {
@@ -1088,10 +1161,12 @@ function processCSV(text, filename) {
     const rows = parseCSV(text);
     // Detect period from filename
     const match = filename.match(/(\d{4}-\d{2}-\d{2})-to-(\d{4}-\d{2}-\d{2})/);
-    let period = 'Uploaded report';
+    let period = 'Uploaded report'; let periodKey = 'upload-' + Date.now();
     if (match) {
-      const d = new Date(match[1]);
-      period = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      const [py, pm] = match[1].split('-');
+      const d = new Date(+py, +pm - 1, 1);            // build in LOCAL time — no UTC rollover
+      period = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      periodKey = py + '-' + pm;
     }
 
     const userMap = {};
@@ -1121,7 +1196,7 @@ function processCSV(text, filename) {
     }).sort((a,b) => b.total_tokens - a.total_tokens);
 
     const summary = {
-      period,
+      period, periodKey,
       total_requests: users.reduce((a,u) => a+u.requests,0),
       total_prompt_tokens: users.reduce((a,u) => a+u.prompt_tokens,0),
       total_completion_tokens: users.reduce((a,u) => a+u.completion_tokens,0),
@@ -1159,8 +1234,7 @@ document.getElementById('csv-input').addEventListener('change', function(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    const data = processCSV(ev.target.result, file.name);
-    if (data) { renderDashboard(data); document.getElementById('upload-overlay').classList.remove('show'); }
+    handleUploadedFile(ev.target.result, file.name);
   };
   reader.readAsText(file);
   this.value = '';
@@ -1175,53 +1249,30 @@ dz.addEventListener('drop', e => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    const data = processCSV(ev.target.result, file.name);
-    if (data) { renderDashboard(data); document.getElementById('upload-overlay').classList.remove('show'); }
+    handleUploadedFile(ev.target.result, file.name);
   };
   reader.readAsText(file);
 });
-
-// ── Members CSV handler ──
-document.getElementById('members-input').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const members = processMembersCSV(ev.target.result);
-    if (members) {
-      MEMBERS_DATA = members;
-      if (currentData) renderDashboard(currentData);
-      document.getElementById('upload-overlay').classList.remove('show');
-      alert('Members updated: ' + members.length + ' members loaded.');
-    }
-  };
-  reader.readAsText(file);
-  this.value = '';
-});
-
-function processMembersCSV(text) {
-  try {
-    const rows = parseCSV(text);
-    return rows.filter(r => r.Email).map(r => ({
-      name: (r.Name || '').split(',')[0].trim(),
-      email: (r.Email || '').trim(),
-      role: (r.Role || 'User').trim(),
-      status: (r.Status || 'Active').trim(),
-      tier: (r['Seat Tier'] || 'Standard').trim()
-    }));
-  } catch(e) {
-    alert('Could not parse members CSV.\n\n' + e.message);
-    return null;
-  }
-}
 
 // Close overlay on backdrop click
 document.getElementById('upload-overlay').addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('show');
 });
 
+// Import backup handler
+document.getElementById('import-input').addEventListener('change', function(e){
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => importData(ev.target.result);
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
 // ── Init ──
-renderDashboard(EMBEDDED_DATA);
+rebuildMonthSelect();
+const _msel = document.getElementById('month-select');
+if (_msel) _msel.addEventListener('change', e => showMonth(e.target.value));
+showMonth(monthKeys()[0]);
 </script>
 </body>
 </html>
