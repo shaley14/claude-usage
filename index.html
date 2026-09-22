@@ -1,0 +1,1384 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Usage Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --border2: #cbc9bf;
+    --text: #1a1916;
+    --text2: #6b6960;
+    --text3: #9b9a93;
+    --accent: #2563eb;
+    --accent-light: #eff4ff;
+    --accent-border: #bfcffa;
+    --teal: #0d8f6f;
+    --teal-light: #eaf6f1;
+    --amber: #b45309;
+    --amber-light: #fef3e2;
+    --coral: #c0392b;
+    --coral-light: #fdf0ee;
+    --purple: #6d28d9;
+    --purple-light: #f3f0ff;
+    --green: #166534;
+    --green-light: #f0fdf4;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 28px; height: 28px;
+    background: var(--text);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo svg { width: 16px; height: 16px; }
+  .header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+  .month-select {
+    font-size: 12px; font-weight: 500; color: var(--text);
+    background: #fff; border: 1px solid var(--accent-border);
+    border-radius: 8px; padding: 4px 9px; cursor: pointer; outline: none;
+  }
+  .month-select:hover { border-color: var(--accent); }
+  .period-badge {
+    font-size: 12px; font-weight: 500;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+    border-radius: 20px;
+    padding: 3px 10px;
+  }
+  .ghost-btn {
+    font-size: 12px; font-weight: 500; color: var(--text2);
+    background: #fff; border: 1px solid var(--accent-border);
+    border-radius: 8px; padding: 6px 12px; cursor: pointer; margin-right: 8px;
+  }
+  .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .upload-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    background: var(--text);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 7px 16px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: opacity 0.15s;
+  }
+  .upload-btn:hover { opacity: 0.85; }
+  #csv-input { display: none; }
+
+  /* ── Layout ── */
+  .main { max-width: 1280px; margin: 0 auto; padding: 28px 32px; }
+
+  /* ── Section headings ── */
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text3);
+    margin-bottom: 14px;
+  }
+
+  /* ── Metric cards row ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+  }
+  .metric-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+  .metric-value { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; line-height: 1; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 5px; }
+
+  /* ── Charts row ── */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+  }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .chart-wrap { position: relative; }
+
+  /* ── User table ── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .table-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .table-header h2 { font-size: 14px; font-weight: 600; }
+  .sort-controls { display: flex; gap: 6px; }
+  .sort-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sort-btn.active {
+    background: var(--text);
+    color: #fff;
+    border-color: var(--text);
+  }
+  .sort-btn:hover:not(.active) { background: var(--surface2); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--text3);
+    padding: 10px 20px;
+    text-align: left;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th:not(:first-child) { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr.expanded { background: var(--accent-light); }
+  tbody tr.expanded:hover { background: var(--accent-light); }
+  td { padding: 12px 20px; font-size: 13px; vertical-align: middle; }
+  td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .user-cell { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .user-name { font-weight: 500; }
+  .user-email { font-size: 11px; color: var(--text3); }
+
+  .bar-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .mini-bar-wrap { width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .mini-bar { height: 100%; border-radius: 2px; background: var(--accent); }
+
+  .product-pills { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill {
+    font-size: 10px; font-weight: 600; padding: 2px 7px;
+    border-radius: 20px; white-space: nowrap;
+  }
+  .pill-chat { background: var(--accent-light); color: var(--accent); }
+  .pill-code { background: var(--teal-light); color: var(--teal); }
+  .pill-chrome { background: var(--amber-light); color: var(--amber); }
+  .pill-cowork { background: var(--purple-light); color: var(--purple); }
+  .pill-office { background: var(--coral-light); color: var(--coral); }
+
+  /* ── Expand row ── */
+  .detail-row { display: none; }
+  .detail-row.open { display: table-row; }
+  .detail-row td {
+    padding: 0;
+    background: #f8f8ff;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-inner { padding: 16px 20px 16px 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .detail-section h4 { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+  .detail-row-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .detail-row-item span:first-child { font-size: 12px; color: var(--text2); }
+  .detail-row-item span:last-child { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .model-bar-row { margin-bottom: 7px; }
+  .model-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+  .model-bar-track { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .model-bar-fill { height: 100%; border-radius: 3px; }
+
+  .expand-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 16px; padding: 2px 4px;
+    transition: transform 0.2s, color 0.15s;
+    display: flex; align-items: center;
+  }
+  .expand-btn:hover { color: var(--accent); }
+  .expand-btn.open { transform: rotate(90deg); color: var(--accent); }
+
+  /* ── Bottom charts ── */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  /* ── Legend ── */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Insight cards ── */
+  .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
+  .insight-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .insight-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .insight-body { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+  /* ── Inactive section ── */
+  .inv-table { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
+  .inv-table th { text-align:left; padding:8px 10px; color:var(--text3); font-weight:500; border-bottom:1px solid var(--border); font-size:11px; text-transform:uppercase; letter-spacing:0.03em; }
+  .inv-table td { padding:8px 10px; border-bottom:1px solid var(--border); }
+  .inv-table th:not(:first-child), .inv-table td:not(:first-child) { text-align:right; }
+  .inv-table tr:last-child td { border-bottom:none; }
+  .inv-note { font-size:11px; color:var(--text3); margin-top:10px; font-style:italic; }
+  .inv-field { font-size:12px; color:var(--text2); }
+  .inv-field input, .inv-field select { width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; margin-top:4px; font-size:13px; box-sizing:border-box; }
+  .inactive-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .inactive-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .inactive-header h2 { font-size: 14px; font-weight: 600; }
+  .inactive-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  .inactive-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 20px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .inactive-item:nth-child(3n) { border-right: none; }
+  .inactive-item:nth-last-child(-n+3) { border-bottom: none; }
+  .inactive-info { flex: 1; min-width: 0; }
+  .inactive-name { font-size: 13px; font-weight: 500; }
+  .inactive-email { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .inactive-note { font-size: 11px; color: var(--text3); margin-top: 2px; font-style: italic; }
+  .tier-badge {
+    font-size: 10px; font-weight: 600; padding: 2px 7px;
+    border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+  }
+  .tier-premium { background: var(--purple-light); color: var(--purple); }
+  .tier-standard { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .status-pending { background: var(--amber-light); color: var(--amber); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; flex-shrink: 0; }
+
+  /* ── Upload overlay ── */
+  .upload-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .upload-overlay.show { display: flex; }
+  .upload-modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    width: 440px;
+    text-align: center;
+  }
+  .upload-modal h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  .upload-modal p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+  .drop-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 32px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 16px;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-light); }
+  .drop-zone-icon { font-size: 32px; margin-bottom: 8px; }
+  .drop-zone p { font-size: 13px; color: var(--text2); margin: 0; }
+  .drop-zone strong { color: var(--accent); }
+  .modal-cancel {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; color: var(--text2);
+    background: none; border: none; cursor: pointer; text-decoration: underline;
+  }
+
+  /* ── Spend section ── */
+  .spend-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .spend-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .spend-header h2 { font-size: 14px; font-weight: 600; }
+  .spend-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .spend-metric {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .spend-metric-label { font-size: 11px; color: var(--text2); font-weight: 500; margin-bottom: 5px; }
+  .spend-metric-value { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; line-height: 1; }
+  .spend-metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .spend-metric.highlight { background: var(--teal-light); }
+  .spend-metric.highlight .spend-metric-value { color: var(--teal); }
+  .spend-seats {
+    display: flex; align-items: center; gap: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text2);
+  }
+  .seat-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px; font-weight: 500; color: var(--text);
+  }
+  .seat-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .overage-note {
+    margin-left: auto;
+    font-size: 11px; color: var(--text3);
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  @media (max-width: 1100px) {
+    .spend-grid { grid-template-columns: repeat(2, 1fr); }
+    .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+    .charts-row { grid-template-columns: 1fr 1fr; }
+    .insights-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 768px) {
+    .main { padding: 16px; }
+    .header { padding: 0 16px; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row, .bottom-row, .insights-grid { grid-template-columns: 1fr; }
+    .detail-inner { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      </svg>
+    </div>
+    <h1>Claude Usage Analytics</h1>
+    <span class="period-badge" id="period-badge">May 2026</span>
+    <select class="month-select" id="month-select" aria-label="Select report month"></select>
+  </div>
+  <button class="ghost-btn" onclick="exportData()" title="Download a backup of all uploaded months + members">Export</button>
+  <button class="ghost-btn" onclick="document.getElementById('import-input').click()" title="Restore or merge a backup file">Import</button>
+  <input type="file" id="import-input" accept=".json" style="display:none">
+  <button class="upload-btn" onclick="document.getElementById('upload-overlay').classList.add('show')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Load new report
+  </button>
+  <input type="file" id="csv-input" accept=".csv">
+</header>
+
+<main class="main">
+
+  <!-- Metric cards -->
+  <div class="metrics-grid" id="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-label">Total requests</div>
+      <div class="metric-value" id="m-requests">—</div>
+      <div class="metric-sub" id="m-requests-sub"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total tokens processed</div>
+      <div class="metric-value" id="m-tokens">—</div>
+      <div class="metric-sub" id="m-tokens-sub"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Cache hit rate</div>
+      <div class="metric-value" id="m-cache">—</div>
+      <div class="metric-sub">Prompt tokens served from cache</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Active users</div>
+      <div class="metric-value" id="m-users">—</div>
+      <div class="metric-sub" id="m-users-sub"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg tokens / request</div>
+      <div class="metric-value" id="m-avg">—</div>
+      <div class="metric-sub">Prompt + completion</div>
+    </div>
+  </div>
+
+  <!-- Spend section -->
+  <div class="spend-section">
+    <div class="spend-header">
+      <h2>Plan &amp; spend</h2>
+    </div>
+    <div class="spend-grid">
+      <div class="spend-metric">
+        <div class="spend-metric-label">Monthly plan cost</div>
+        <div class="spend-metric-value" id="s-plan-cost">$1,025</div>
+        <div class="spend-metric-sub" id="s-seats-total">29 seats total</div>
+      </div>
+      <div class="spend-metric highlight">
+        <div class="spend-metric-label">Cost per active user</div>
+        <div class="spend-metric-value" id="s-per-user">—</div>
+        <div class="spend-metric-sub" id="s-per-user-sub">This month</div>
+      </div>
+      <div class="spend-metric">
+        <div class="spend-metric-label">Cost per 1M tokens</div>
+        <div class="spend-metric-value" id="s-per-token">—</div>
+        <div class="spend-metric-sub">Effective rate</div>
+      </div>
+      <div class="spend-metric">
+        <div class="spend-metric-label">Cost per request</div>
+        <div class="spend-metric-value" id="s-per-req">—</div>
+        <div class="spend-metric-sub">Avg across all users</div>
+      </div>
+    </div>
+    <div class="spend-seats">
+      <span class="seat-badge"><span class="seat-dot" style="background:#2563eb"></span><span id="s-std-badge">26 standard seats</span></span>
+      <span class="seat-badge"><span class="seat-dot" style="background:#6d28d9"></span><span id="s-prem-badge">3 premium seats</span></span>
+      <span class="overage-note">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        $200 overage credit available if usage exceeds plan limit
+      </span>
+    </div>
+  </div>
+
+  <!-- Top charts row -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Token usage by user</div>
+      <div class="chart-wrap" style="height: 260px;">
+        <canvas id="userTokenChart" role="img" aria-label="Horizontal bar chart of token usage per user"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Usage by product</div>
+      <div class="chart-wrap" style="height: 220px;">
+        <canvas id="productChart" role="img" aria-label="Doughnut chart of requests by product"></canvas>
+      </div>
+      <div class="legend" id="product-legend"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Model distribution</div>
+      <div class="chart-wrap" style="height: 220px;">
+        <canvas id="modelChart" role="img" aria-label="Doughnut chart of requests by model"></canvas>
+      </div>
+      <div class="legend" id="model-legend"></div>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="section-label">ROI signals &amp; allocation insights</div>
+  <div class="insights-grid" id="insights-grid"></div>
+
+  <!-- User table -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2>Team member breakdown</h2>
+      <div class="sort-controls">
+        <button class="sort-btn active" data-sort="tokens" onclick="setSort('tokens', this)">By tokens</button>
+        <button class="sort-btn" data-sort="requests" onclick="setSort('requests', this)">By requests</button>
+        <button class="sort-btn" data-sort="name" onclick="setSort('name', this)">By name</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th style="text-align:left">Team member</th>
+          <th>Total tokens</th>
+          <th>Requests</th>
+          <th>Cache rate</th>
+          <th>Products used</th>
+          <th style="text-align:center">Expand</th>
+        </tr>
+      </thead>
+      <tbody id="user-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Inactive members -->
+  <div class="section-label">Seat utilization</div>
+  <div class="inactive-section">
+    <div class="inactive-header">
+      <h2>No usage this period</h2>
+      <span style="font-size:12px;color:var(--text3)" id="inactive-count"></span>
+    </div>
+    <div class="inactive-grid" id="inactive-grid"></div>
+  </div>
+
+  <!-- Bottom row -->
+  <div class="bottom-row">
+    <div class="chart-card">
+      <div class="chart-title">Requests per user</div>
+      <div class="chart-wrap" id="req-chart-wrap">
+        <canvas id="reqChart" role="img" aria-label="Horizontal bar chart of requests per user"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Cache efficiency by user</div>
+      <div class="chart-wrap" id="cache-chart-wrap">
+        <canvas id="cacheChart" role="img" aria-label="Horizontal bar chart of cache hit rate by user"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actual invoiced spend -->
+  <div class="spend-section" style="margin-top:20px">
+    <div class="spend-header" style="display:flex;align-items:center;justify-content:space-between">
+      <h2>Actual invoiced spend</h2>
+      <button class="ghost-btn" onclick="document.getElementById('invoice-overlay').classList.add('show')">+ Add invoice</button>
+    </div>
+    <div class="spend-grid">
+      <div class="spend-metric highlight"><div class="spend-metric-label">Total invoiced</div><div class="spend-metric-value" id="inv-total">—</div><div class="spend-metric-sub">All recorded invoices</div></div>
+      <div class="spend-metric"><div class="spend-metric-label">Seat renewals</div><div class="spend-metric-value" id="inv-renewal">—</div><div class="spend-metric-sub">Monthly base (22nd cycle)</div></div>
+      <div class="spend-metric"><div class="spend-metric-label">Seat changes</div><div class="spend-metric-value" id="inv-proration">—</div><div class="spend-metric-sub">Mid-cycle proration</div></div>
+      <div class="spend-metric"><div class="spend-metric-label">Usage / overage</div><div class="spend-metric-value" id="inv-usage">—</div><div class="spend-metric-sub">Prepaid + auto-recharge</div></div>
+    </div>
+    <table class="inv-table">
+      <thead><tr><th>Month</th><th>Renewal</th><th>Seat changes</th><th>Usage</th><th>Total</th></tr></thead>
+      <tbody id="inv-tbody"></tbody>
+    </table>
+    <p class="inv-note">Amounts include tax. Billing renews on the 22nd, so a calendar month can look low until its renewal invoice is added.</p>
+  </div>
+
+</main>
+
+<!-- Upload overlay -->
+<div class="upload-overlay" id="upload-overlay">
+  <div class="upload-modal">
+    <h3>Load a new usage report</h3>
+    <p>Upload a Claude <strong>spend report</strong> (new month) or a <strong>members</strong> export (updates seats &amp; cost for the selected month).</p>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-input').click()">
+      <div class="drop-zone-icon">📊</div>
+      <p><strong>Click to choose a file</strong> or drag and drop</p>
+      <p style="margin-top:4px; font-size:12px;">spend-report-*.csv or members-*.csv</p>
+    </div>
+    <button class="modal-cancel" onclick="document.getElementById('upload-overlay').classList.remove('show')">Cancel</button>
+  </div>
+</div>
+
+<!-- Add-invoice overlay -->
+<div class="upload-overlay" id="invoice-overlay">
+  <div class="upload-modal">
+    <h3>Add an invoice</h3>
+    <p>Record an invoice total so monthly spend stays accurate.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;text-align:left;margin:12px 0">
+      <label class="inv-field">Date<input type="date" id="inv-date"></label>
+      <label class="inv-field">Amount (USD, incl. tax)<input type="number" step="0.01" id="inv-amount" placeholder="0.00"></label>
+      <label class="inv-field">Category<select id="inv-category"><option value="renewal">Renewal (monthly base)</option><option value="proration">Seat change (proration)</option><option value="usage" selected>Usage / overage</option></select></label>
+      <label class="inv-field">Memo (optional)<input type="text" id="inv-memo" placeholder="e.g. invoice #, seat count"></label>
+    </div>
+    <button class="upload-btn" style="width:100%;justify-content:center;margin-bottom:8px" onclick="addInvoice()">Add invoice</button>
+    <button class="modal-cancel" onclick="document.getElementById('invoice-overlay').classList.remove('show')">Cancel</button>
+  </div>
+</div>
+
+<script>
+const EMBEDDED_DATA = {"summary":{"period":"May 2026","periodKey":"2026-05","total_requests":11927,"total_prompt_tokens":2081934840,"total_completion_tokens":9704572,"total_tokens":2091639412,"total_cache_read":2000974606,"total_web_searches":6,"unique_users":22},"users":[{"email":"anjali.gurnani@centricityresearch.com","name":"Anjali Gurnani","requests":4644,"prompt_tokens":1032631852,"completion_tokens":4100972,"total_tokens":1036732824,"cache_read":1003837416,"cache_ratio":97.2,"web_searches":0,"products":{"Chat":4131,"Claude in Chrome":513},"models":{"claude-haiku-4-5-20251001":127,"claude-opus-4-7":3814,"claude-opus-4-8":317,"claude-sonnet-4-6":386}},{"email":"shakeel.abdul@centricityresearch.com","name":"Shakeel Abdul","requests":1768,"prompt_tokens":497313765,"completion_tokens":1108372,"total_tokens":498422137,"cache_read":475523043,"cache_ratio":95.6,"web_searches":6,"products":{"Chat":1660,"Cowork":83,"Office Agents":25},"models":{"claude-haiku-4-5-20251001":17,"claude-opus-4-7":1638,"claude-opus-4-8":54,"claude-sonnet-4-6":59}},{"email":"cooper.brownlee@centricityresearch.com","name":"Cooper Brownlee","requests":1232,"prompt_tokens":117241755,"completion_tokens":1063595,"total_tokens":118305350,"cache_read":110537128,"cache_ratio":94.3,"web_searches":0,"products":{"Chat":1232},"models":{"claude-sonnet-4-6":1232}},{"email":"baskaran.marichetty@centricityresearch.com","name":"Baskaran Marichetty","requests":400,"prompt_tokens":69039806,"completion_tokens":635664,"total_tokens":69675470,"cache_read":64346105,"cache_ratio":93.2,"web_searches":0,"products":{"Chat":400},"models":{"claude-sonnet-4-6":400}},{"email":"marcha.gatewood@centricityresearch.com","name":"Marcha Gatewood","requests":528,"prompt_tokens":57054426,"completion_tokens":511557,"total_tokens":57565983,"cache_read":53837464,"cache_ratio":94.4,"web_searches":0,"products":{"Chat":528},"models":{"claude-sonnet-4-6":528}},{"email":"jordan.greene@centricityresearch.com","name":"Jordan Greene","requests":495,"prompt_tokens":55309388,"completion_tokens":403036,"total_tokens":55712424,"cache_read":52788540,"cache_ratio":95.4,"web_searches":0,"products":{"Chat":495},"models":{"claude-sonnet-4-6":495}},{"email":"raphael.brochu@centricityresearch.com","name":"Raphael Brochu","requests":244,"prompt_tokens":51447152,"completion_tokens":221763,"total_tokens":51668915,"cache_read":49926097,"cache_ratio":97.0,"web_searches":0,"products":{"Chat":244},"models":{"claude-sonnet-4-6":244}},{"email":"lacey.hood@centricityresearch.com","name":"Lacey Hood","requests":628,"prompt_tokens":49813850,"completion_tokens":343008,"total_tokens":50156858,"cache_read":46421940,"cache_ratio":93.2,"web_searches":0,"products":{"Chat":628},"models":{"claude-sonnet-4-6":628}},{"email":"mani.d@centricityresearch.com","name":"Mani D","requests":190,"prompt_tokens":28652341,"completion_tokens":158833,"total_tokens":28811174,"cache_read":26772020,"cache_ratio":93.4,"web_searches":0,"products":{"Chat":186,"Cowork":4},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-7":3,"claude-sonnet-4-6":186}},{"email":"ashley.morrison@centricityresearch.com","name":"Ashley Morrison","requests":327,"prompt_tokens":25399047,"completion_tokens":154997,"total_tokens":25554044,"cache_read":24392457,"cache_ratio":96.0,"web_searches":0,"products":{"Chat":327},"models":{"claude-sonnet-4-6":327}},{"email":"prudhvi.teja@centricityresearch.com","name":"Prudhvi Teja","requests":245,"prompt_tokens":21374273,"completion_tokens":140076,"total_tokens":21514349,"cache_read":20684299,"cache_ratio":96.8,"web_searches":0,"products":{"Chat":178,"Cowork":45,"Office Agents":22},"models":{"claude-haiku-4-5-20251001":2,"claude-opus-4-6":16,"claude-opus-4-7":49,"claude-sonnet-4-6":178}},{"email":"suman.jakka@centricityresearch.com","name":"Suman Jakka","requests":224,"prompt_tokens":15024547,"completion_tokens":150758,"total_tokens":15175305,"cache_read":14104184,"cache_ratio":93.9,"web_searches":0,"products":{"Chat":33,"Cowork":69,"Office Agents":122},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-7":74,"claude-sonnet-4-6":149}},{"email":"koteeswaran.ramachandran@centricityresearch.com","name":"Koteeswaran Ramachandran","requests":235,"prompt_tokens":12477154,"completion_tokens":221137,"total_tokens":12698291,"cache_read":11682728,"cache_ratio":93.6,"web_searches":0,"products":{"Chat":16,"Claude Code":219},"models":{"claude-haiku-4-5-20251001":39,"claude-sonnet-4-6":196}},{"email":"julia.brown@centricityresearch.com","name":"Julia Brown","requests":167,"prompt_tokens":11573520,"completion_tokens":132871,"total_tokens":11706391,"cache_read":10912511,"cache_ratio":94.3,"web_searches":0,"products":{"Chat":167},"models":{"claude-sonnet-4-6":167}},{"email":"bhuvana.venkataramanan@centricityresearch.com","name":"Bhuvana Venkataramanan","requests":185,"prompt_tokens":11467382,"completion_tokens":137132,"total_tokens":11604514,"cache_read":10891212,"cache_ratio":95.0,"web_searches":0,"products":{"Chat":185},"models":{"claude-sonnet-4-6":185}},{"email":"eric.kemp@centricityresearch.com","name":"Eric Kemp","requests":164,"prompt_tokens":10653831,"completion_tokens":55164,"total_tokens":10708995,"cache_read":9795042,"cache_ratio":91.9,"web_searches":0,"products":{"Chat":164},"models":{"claude-sonnet-4-6":164}},{"email":"katharine.gouthro@centricityresearch.com","name":"Katharine Gouthro","requests":82,"prompt_tokens":6136623,"completion_tokens":70244,"total_tokens":6206867,"cache_read":5911683,"cache_ratio":96.3,"web_searches":0,"products":{"Chat":82},"models":{"claude-sonnet-4-6":82}},{"email":"tristin.farris@centricityresearch.com","name":"Tristin Farris","requests":62,"prompt_tokens":2916284,"completion_tokens":25553,"total_tokens":2941837,"cache_read":2707624,"cache_ratio":92.8,"web_searches":0,"products":{"Chat":62},"models":{"claude-sonnet-4-6":62}},{"email":"anita.rani@centricityresearch.com","name":"Anita Rani","requests":51,"prompt_tokens":2763543,"completion_tokens":39605,"total_tokens":2803148,"cache_read":2608113,"cache_ratio":94.4,"web_searches":0,"products":{"Chat":51},"models":{"claude-sonnet-4-6":51}},{"email":"ellen.smith@centricityresearch.com","name":"Ellen Smith","requests":34,"prompt_tokens":2719901,"completion_tokens":23175,"total_tokens":2743076,"cache_read":2443818,"cache_ratio":89.8,"web_searches":0,"products":{"Chat":34},"models":{"claude-sonnet-4-6":34}},{"email":"shaley@centricityresearch.com","name":"Shaley","requests":16,"prompt_tokens":673728,"completion_tokens":6354,"total_tokens":680082,"cache_read":621391,"cache_ratio":92.2,"web_searches":0,"products":{"Chat":16},"models":{"claude-sonnet-4-6":16}},{"email":"talya.amor@centricityresearch.com","name":"Talya Amor","requests":6,"prompt_tokens":250672,"completion_tokens":706,"total_tokens":251378,"cache_read":229791,"cache_ratio":91.7,"web_searches":0,"products":{"Chat":6},"models":{"claude-sonnet-4-6":6}}],"products":{"Chat":{"requests":10825,"tokens":2019523996},"Claude Code":{"requests":219,"tokens":11682209},"Claude in Chrome":{"requests":513,"tokens":27052260},"Cowork":{"requests":201,"tokens":15874496},"Office Agents":{"requests":169,"tokens":7801879}},"models":{"claude-haiku-4-5-20251001":{"requests":187,"tokens":835513},"claude-opus-4-6":{"requests":16,"tokens":687969},"claude-opus-4-7":{"requests":5578,"tokens":1452204594},"claude-opus-4-8":{"requests":371,"tokens":56888157},"claude-sonnet-4-6":{"requests":5775,"tokens":571318607}}};
+
+const MEMBERS_DATA = [{"name": "Susannah Haley", "email": "shaley@centricityresearch.com", "role": "Primary Owner", "status": "Active", "tier": "Standard"}, {"name": "Raphael Brochu, MBA", "email": "raphael.brochu@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Marcha Gatewood", "email": "marcha.gatewood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Ashley Morrison", "email": "ashley.morrison@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Talya Amor", "email": "talya.amor@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Amanda Clary-Phillips, LPN, CCRC", "email": "amanda.phillips@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Shakeel Abdul", "email": "shakeel.abdul@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Anjali Gurnani", "email": "anjali.gurnani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Lacey Hood", "email": "lacey.hood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jordan Greene, MS, CCRC, ACRP-PM", "email": "jordan.greene@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Julia Brown", "email": "julia.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Prudhvi Teja B", "email": "prudhvi.teja@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Govardhan Pothala", "email": "govardhan.pothala@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Cooper", "email": "cooper.brownlee@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Koteeswaran Ramachandran", "email": "koteeswaran.ramachandran@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anita Rani", "email": "anita.rani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Mani Deepak G", "email": "mani.d@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Ellen Smith", "email": "ellen.smith@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Baskaran Marichetty", "email": "baskaran.marichetty@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Eric Kemp, BSc Honours, CCRC, ACRP-PM", "email": "eric.kemp@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Emily Waddington", "email": "emily.waddington@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tristin Farris", "email": "tristin.farris@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Navin Raj", "email": "navin.raj@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Abinaya Sundaram", "email": "abinaya.sundaram@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Abhishek Singhvi", "email": "abhishek.singhvi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Delmas Brown", "email": "delmas.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Stephanie Holloway", "email": "stephanie.holloway@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jake Choi", "email": "jake.choi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jay Sinder", "email": "jay.sinder@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Sujeet Kumar Rai", "email": "sujeetkumar.rai@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Allison Reichenbach", "email": "allison.reichenbach@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Kaylee Bankston", "email": "kaylee.bankston@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tajinder Kaur", "email": "tajinder.kaur@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Nicole Gagnon", "email": "nicole.gagnon@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Thahmina Rahman", "email": "thahmina.rahman@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Patrick Sumdey", "email": "patrick.sumdey@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Raj Priyesh", "email": "raj.priyesh@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Mainak Malay Saha", "email": "mainak.saha@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Chandra Prakash Babu Ponduri", "email": "chandra.ponduri@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jennifer Navin", "email": "jennifer.navin@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Lexianna P Lindic, BSc, CCRC", "email": "lexiannap.lindic@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Morgan Chavez", "email": "morgan.chavez@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}];
+
+
+const AVATAR_COLORS = [
+  ['#e8f0fe','#1a56b0'],['#e8f8f1','#0d6b50'],['#fef3e2','#92400e'],
+  ['#f3f0ff','#5b21b6'],['#fdf0ee','#9b2c2c'],['#f0fdf4','#166534'],
+  ['#eff6ff','#1d4ed8'],['#fef9c3','#854d0e'],['#fce7f3','#9d174d'],
+  ['#ecfdf5','#065f46'],['#ede9fe','#4c1d95'],['#fff7ed','#9a3412'],
+];
+const PRODUCT_COLORS = {
+  'Chat': '#2563eb',
+  'Claude Code': '#0d8f6f',
+  'Claude in Chrome': '#b45309',
+  'Cowork': '#6d28d9',
+  'Office Agents': '#c0392b',
+};
+const MODEL_COLORS = {
+  'claude-opus-4-7': '#2563eb',
+  'claude-sonnet-4-6': '#0d8f6f',
+  'claude-opus-4-8': '#b45309',
+  'claude-haiku-4-5-20251001': '#6d28d9',
+  'claude-opus-4-6': '#c0392b',
+};
+const MODEL_LABELS = {
+  'claude-opus-4-7': 'Opus 4.7',
+  'claude-sonnet-4-6': 'Sonnet 4.6',
+  'claude-opus-4-8': 'Opus 4.8',
+  'claude-haiku-4-5-20251001': 'Haiku 4.5',
+  'claude-opus-4-6': 'Opus 4.6',
+};
+
+// ── Formatting ──
+function fmtTokens(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return n.toString();
+}
+function fmtNum(n) { return n.toLocaleString(); }
+function initials(name) {
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0,2).toUpperCase();
+}
+
+let charts = {};
+let currentSort = 'tokens';
+// ── Embedded seeds ──
+const EMBEDDED_JUNE = {"summary":{"period":"June 2026","periodKey":"2026-06","total_requests":35566,"total_prompt_tokens":7585061446,"total_completion_tokens":26911628,"total_tokens":7611973074,"total_cache_read":7309044706,"total_web_searches":356,"unique_users":30},"users":[{"email":"navin.raj@centricityresearch.com","name":"Navin Raj","requests":8172,"prompt_tokens":3945219630,"completion_tokens":7661645,"cache_read":3865959061,"web_searches":3,"products":{"Chat":26,"Claude Code":8146},"models":{"claude-haiku-4-5-20251001":20,"claude-opus-4-8":8152},"total_tokens":3952881275,"cache_ratio":98},{"email":"anjali.gurnani@centricityresearch.com","name":"Anjali Gurnani","requests":5636,"prompt_tokens":1156160844,"completion_tokens":6036256,"cache_read":1120205124,"web_searches":22,"products":{"Chat":4034,"Claude in Chrome":1602},"models":{"claude-haiku-4-5-20251001":414,"claude-opus-4-7":285,"claude-opus-4-8":3734,"claude-sonnet-4-6":1203},"total_tokens":1162197100,"cache_ratio":96.9},{"email":"shakeel.abdul@centricityresearch.com","name":"Shakeel Abdul","requests":4982,"prompt_tokens":837495844,"completion_tokens":614054,"cache_read":761491664,"web_searches":23,"products":{"Claude in Chrome":4523,"Chat":445,"Cowork":14},"models":{"claude-sonnet-4-6":3274,"claude-haiku-4-5-20251001":1671,"claude-fable-5":21,"claude-opus-4-8":16},"total_tokens":838109898,"cache_ratio":90.9},{"email":"baskaran.marichetty@centricityresearch.com","name":"Baskaran Marichetty","requests":1405,"prompt_tokens":241953717,"completion_tokens":1136612,"cache_read":227835758,"web_searches":29,"products":{"Chat":1405},"models":{"claude-sonnet-4-6":1274,"claude-haiku-4-5-20251001":7,"claude-opus-4-8":124},"total_tokens":243090329,"cache_ratio":94.2},{"email":"koteeswaran.ramachandran@centricityresearch.com","name":"Koteeswaran Ramachandran","requests":2764,"prompt_tokens":234461381,"completion_tokens":2495760,"cache_read":225562433,"web_searches":0,"products":{"Chat":21,"Claude Code":2743},"models":{"claude-haiku-4-5-20251001":278,"claude-sonnet-4-6":2486},"total_tokens":236957141,"cache_ratio":96.2},{"email":"abhishek.singhvi@centricityresearch.com","name":"Abhishek Singhvi","requests":1849,"prompt_tokens":209435878,"completion_tokens":1840250,"cache_read":197351431,"web_searches":17,"products":{"Chat":623,"Claude Code":1226},"models":{"claude-sonnet-4-6":1378,"claude-haiku-4-5-20251001":411,"claude-opus-4-8":60},"total_tokens":211276128,"cache_ratio":94.2},{"email":"cooper.brownlee@centricityresearch.com","name":"Cooper Brownlee","requests":1312,"prompt_tokens":174279204,"completion_tokens":669791,"cache_read":167179328,"web_searches":78,"products":{"Chat":1312},"models":{"claude-haiku-4-5-20251001":21,"claude-sonnet-4-6":1291},"total_tokens":174948995,"cache_ratio":95.9},{"email":"anita.rani@centricityresearch.com","name":"Anita Rani","requests":2281,"prompt_tokens":161903940,"completion_tokens":2322184,"cache_read":155384300,"web_searches":0,"products":{"Chat":22,"Claude Code":2259},"models":{"claude-haiku-4-5-20251001":365,"claude-opus-4-8":3,"claude-sonnet-4-6":1913},"total_tokens":164226124,"cache_ratio":96},{"email":"jordan.greene@centricityresearch.com","name":"Jordan Greene","requests":917,"prompt_tokens":146278274,"completion_tokens":587919,"cache_read":141457891,"web_searches":52,"products":{"Chat":917},"models":{"claude-haiku-4-5-20251001":4,"claude-sonnet-4-6":913},"total_tokens":146866193,"cache_ratio":96.7},{"email":"ellen.smith@centricityresearch.com","name":"Ellen Smith","requests":883,"prompt_tokens":81012711,"completion_tokens":463130,"cache_read":76245314,"web_searches":28,"products":{"Chat":883},"models":{"claude-haiku-4-5-20251001":26,"claude-sonnet-4-6":857},"total_tokens":81475841,"cache_ratio":94.1},{"email":"marcha.gatewood@centricityresearch.com","name":"Marcha Gatewood","requests":683,"prompt_tokens":73358532,"completion_tokens":330631,"cache_read":68363499,"web_searches":2,"products":{"Chat":683},"models":{"claude-haiku-4-5-20251001":16,"claude-sonnet-4-6":667},"total_tokens":73689163,"cache_ratio":93.2},{"email":"govardhan.pothala@centricityresearch.com","name":"Govardhan Pothala","requests":671,"prompt_tokens":45453655,"completion_tokens":431544,"cache_read":40976071,"web_searches":0,"products":{"Chat":4,"Office Agents":667},"models":{"claude-sonnet-4-6":4,"claude-haiku-4-5-20251001":328,"claude-opus-4-8":339},"total_tokens":45885199,"cache_ratio":90.1},{"email":"shaley@centricityresearch.com","name":"Shaley","requests":408,"prompt_tokens":34487521,"completion_tokens":227344,"cache_read":33210846,"web_searches":2,"products":{"Chat":408},"models":{"claude-haiku-4-5-20251001":1,"claude-opus-4-8":17,"claude-sonnet-4-6":390},"total_tokens":34714865,"cache_ratio":96.3},{"email":"ashley.morrison@centricityresearch.com","name":"Ashley Morrison","requests":337,"prompt_tokens":32966365,"completion_tokens":194959,"cache_read":31176915,"web_searches":4,"products":{"Chat":337},"models":{"claude-haiku-4-5-20251001":3,"claude-sonnet-4-6":334},"total_tokens":33161324,"cache_ratio":94.6},{"email":"suman.jakka@centricityresearch.com","name":"Suman Jakka","requests":679,"prompt_tokens":27057471,"completion_tokens":256027,"cache_read":25430402,"web_searches":3,"products":{"Cowork":42,"Office Agents":637},"models":{"claude-haiku-4-5-20251001":396,"claude-sonnet-4-6":193,"claude-opus-4-8":90},"total_tokens":27313498,"cache_ratio":94},{"email":"raphael.brochu@centricityresearch.com","name":"Raphael Brochu","requests":102,"prompt_tokens":26859562,"completion_tokens":75022,"cache_read":24894446,"web_searches":2,"products":{"Chat":102},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-4-6":100},"total_tokens":26934584,"cache_ratio":92.7},{"email":"prudhvi.teja@centricityresearch.com","name":"Prudhvi Teja","requests":480,"prompt_tokens":25440590,"completion_tokens":367072,"cache_read":23102612,"web_searches":6,"products":{"Chat":102,"Office Agents":378},"models":{"claude-sonnet-4-6":102,"claude-haiku-4-5-20251001":182,"claude-opus-4-7":196},"total_tokens":25807662,"cache_ratio":90.8},{"email":"lacey.hood@centricityresearch.com","name":"Lacey Hood","requests":322,"prompt_tokens":21032565,"completion_tokens":140764,"cache_read":20072218,"web_searches":5,"products":{"Chat":322},"models":{"claude-haiku-4-5-20251001":5,"claude-sonnet-4-6":317},"total_tokens":21173329,"cache_ratio":95.4},{"email":"bhuvana.venkataramanan@centricityresearch.com","name":"Bhuvana Venkataramanan","requests":291,"prompt_tokens":18890311,"completion_tokens":244394,"cache_read":17675889,"web_searches":18,"products":{"Chat":291},"models":{"claude-haiku-4-5-20251001":11,"claude-sonnet-4-6":280},"total_tokens":19134705,"cache_ratio":93.6},{"email":"julia.brown@centricityresearch.com","name":"Julia Brown","requests":263,"prompt_tokens":16543012,"completion_tokens":167916,"cache_read":15800613,"web_searches":9,"products":{"Chat":263},"models":{"claude-haiku-4-5-20251001":10,"claude-sonnet-4-6":216,"claude-sonnet-5":37},"total_tokens":16710928,"cache_ratio":95.5},{"email":"abinaya.sundaram@centricityresearch.com","name":"Abinaya Sundaram","requests":193,"prompt_tokens":14674841,"completion_tokens":194468,"cache_read":13858066,"web_searches":0,"products":{"Claude Code":193},"models":{"claude-haiku-4-5-20251001":8,"claude-sonnet-4-6":185},"total_tokens":14869309,"cache_ratio":94.4},{"email":"eric.kemp@centricityresearch.com","name":"Eric Kemp","requests":201,"prompt_tokens":13207658,"completion_tokens":72832,"cache_read":12537581,"web_searches":20,"products":{"Chat":201},"models":{"claude-haiku-4-5-20251001":7,"claude-sonnet-4-6":194},"total_tokens":13280490,"cache_ratio":94.9},{"email":"tristin.farris@centricityresearch.com","name":"Tristin Farris","requests":276,"prompt_tokens":11918861,"completion_tokens":88467,"cache_read":10407100,"web_searches":0,"products":{"Chat":276},"models":{"claude-haiku-4-5-20251001":16,"claude-sonnet-4-6":260},"total_tokens":12007328,"cache_ratio":87.3},{"email":"delmas.brown@centricityresearch.com","name":"Delmas Brown","requests":157,"prompt_tokens":10456196,"completion_tokens":160838,"cache_read":9913401,"web_searches":0,"products":{"Chat":157},"models":{"claude-haiku-4-5-20251001":4,"claude-sonnet-4-6":153},"total_tokens":10617034,"cache_ratio":94.8},{"email":"amanda.phillips@centricityresearch.com","name":"Amanda Phillips","requests":123,"prompt_tokens":7592524,"completion_tokens":79538,"cache_read":7213991,"web_searches":0,"products":{"Chat":104,"Office Agents":19},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-4-6":103,"claude-opus-4-8":19},"total_tokens":7672062,"cache_ratio":95},{"email":"mani.d@centricityresearch.com","name":"Mani D","requests":28,"prompt_tokens":7085374,"completion_tokens":15836,"cache_read":6398689,"web_searches":0,"products":{"Chat":28},"models":{"claude-sonnet-4-6":28},"total_tokens":7101210,"cache_ratio":90.3},{"email":"talya.amor@centricityresearch.com","name":"Talya Amor","requests":77,"prompt_tokens":5753883,"completion_tokens":9435,"cache_read":5611458,"web_searches":1,"products":{"Chat":77},"models":{"claude-sonnet-4-6":77},"total_tokens":5763318,"cache_ratio":97.5},{"email":"alexandra.walton@centricityresearch.com","name":"Alexandra Walton","requests":46,"prompt_tokens":2826493,"completion_tokens":15844,"cache_read":2548794,"web_searches":29,"products":{"Chat":46},"models":{"claude-haiku-4-5-20251001":2,"claude-sonnet-4-6":44},"total_tokens":2842337,"cache_ratio":90.2},{"email":"emily.waddington@centricityresearch.com","name":"Emily Waddington","requests":22,"prompt_tokens":983134,"completion_tokens":6181,"cache_read":940785,"web_searches":0,"products":{"Chat":22},"models":{"claude-haiku-4-5-20251001":1,"claude-sonnet-4-6":21},"total_tokens":989315,"cache_ratio":95.7},{"email":"katharine.gouthro@centricityresearch.com","name":"Katharine Gouthro","requests":6,"prompt_tokens":271475,"completion_tokens":4915,"cache_read":239026,"web_searches":3,"products":{"Chat":6},"models":{"claude-sonnet-4-6":6},"total_tokens":276390,"cache_ratio":88}],"products":{"Claude in Chrome":{"requests":6125,"tokens":917583547},"Chat":{"requests":13117,"tokens":2151664220},"Claude Code":{"requests":14567,"tokens":4424118962},"Cowork":{"requests":56,"tokens":2300862},"Office Agents":{"requests":1701,"tokens":89393855}},"models":{"claude-sonnet-4-6":{"requests":18263,"tokens":2443463386},"claude-haiku-4-5-20251001":{"requests":4210,"tokens":34351956},"claude-opus-4-8":{"requests":12554,"tokens":4988049053},"claude-fable-5":{"requests":21,"tokens":2704672},"claude-opus-4-7":{"requests":481,"tokens":112799928},"claude-sonnet-5":{"requests":37,"tokens":3692451}}};
+const EMBEDDED_JULY = {"summary": {"period": "July 2026", "periodKey": "2026-07", "total_requests": 48871, "total_prompt_tokens": 14074185553, "total_completion_tokens": 42716175, "total_tokens": 14116901728, "total_cache_read": 13711378035, "total_web_searches": 333, "unique_users": 37}, "users": [{"email": "navin.raj@centricityresearch.com", "name": "Navin Raj", "requests": 9610, "prompt_tokens": 4457819231, "completion_tokens": 9117276, "cache_read": 4347262458, "web_searches": 5, "products": {"Chat": 3, "Claude Code": 9607}, "models": {"claude-haiku-4-5-20251001": 24, "claude-opus-4-8": 9586}, "total_tokens": 4466936507, "cache_ratio": 97.5}, {"email": "anjali.gurnani@centricityresearch.com", "name": "Anjali Gurnani", "requests": 7421, "prompt_tokens": 2651122929, "completion_tokens": 7528279, "cache_read": 2598452503, "web_searches": 34, "products": {"Chat": 2171, "Claude in Chrome": 1348, "Cowork": 3902}, "models": {"claude-fable-5": 1880, "claude-haiku-4-5-20251001": 292, "claude-opus-4-8": 4178, "claude-sonnet-4-6": 1, "claude-sonnet-5": 1070}, "total_tokens": 2658651208, "cache_ratio": 98.0}, {"email": "koteeswaran.ramachandran@centricityresearch.com", "name": "Koteeswaran Ramachandran", "requests": 8797, "prompt_tokens": 2646959810, "completion_tokens": 6903869, "cache_read": 2583193744, "web_searches": 74, "products": {"Claude Code": 8797}, "models": {"claude-fable-5": 215, "claude-haiku-4-5-20251001": 309, "claude-sonnet-4-6": 345, "claude-sonnet-5": 7928}, "total_tokens": 2653863679, "cache_ratio": 97.6}, {"email": "abhishek.singhvi@centricityresearch.com", "name": "Abhishek Singhvi", "requests": 3643, "prompt_tokens": 1216890510, "completion_tokens": 4078547, "cache_read": 1183156831, "web_searches": 8, "products": {"Chat": 1869, "Claude Code": 1652, "Cowork": 122}, "models": {"claude-sonnet-5": 2054, "claude-opus-5": 104, "claude-sonnet-4-6": 1316, "claude-opus-4-8": 42, "claude-haiku-4-5-20251001": 127}, "total_tokens": 1220969057, "cache_ratio": 97.2}, {"email": "anita.rani@centricityresearch.com", "name": "Anita Rani", "requests": 3258, "prompt_tokens": 489465877, "completion_tokens": 2568707, "cache_read": 478621361, "web_searches": 0, "products": {"Chat": 314, "Claude Code": 2944}, "models": {"claude-sonnet-5": 3167, "claude-haiku-4-5-20251001": 66, "claude-sonnet-4-6": 25}, "total_tokens": 492034584, "cache_ratio": 97.8}, {"email": "jake.choi@centricityresearch.com", "name": "Jake Choi", "requests": 1413, "prompt_tokens": 479740114, "completion_tokens": 1151983, "cache_read": 469118285, "web_searches": 15, "products": {"Chat": 1398, "Office Agents": 15}, "models": {"claude-haiku-4-5-20251001": 14, "claude-opus-5": 33, "claude-sonnet-5": 1366}, "total_tokens": 480892097, "cache_ratio": 97.8}, {"email": "kaylee.bankston@centricityresearch.com", "name": "Kaylee Bankston", "requests": 1687, "prompt_tokens": 412508127, "completion_tokens": 1230263, "cache_read": 406088855, "web_searches": 0, "products": {"Chat": 1687}, "models": {"claude-sonnet-5": 1687}, "total_tokens": 413738390, "cache_ratio": 98.4}, {"email": "ellen.smith@centricityresearch.com", "name": "Ellen Smith", "requests": 1918, "prompt_tokens": 340587358, "completion_tokens": 1368594, "cache_read": 327972423, "web_searches": 18, "products": {"Chat": 1918}, "models": {"claude-haiku-4-5-20251001": 16, "claude-sonnet-4-6": 86, "claude-sonnet-5": 1816}, "total_tokens": 341955952, "cache_ratio": 96.3}, {"email": "baskaran.marichetty@centricityresearch.com", "name": "Baskaran Marichetty", "requests": 1721, "prompt_tokens": 332833523, "completion_tokens": 2329118, "cache_read": 320950087, "web_searches": 30, "products": {"Chat": 1721}, "models": {"claude-haiku-4-5-20251001": 6, "claude-sonnet-4-6": 55, "claude-sonnet-5": 1660}, "total_tokens": 335162641, "cache_ratio": 96.4}, {"email": "cooper.brownlee@centricityresearch.com", "name": "Cooper Brownlee", "requests": 2125, "prompt_tokens": 272629242, "completion_tokens": 1540003, "cache_read": 261255139, "web_searches": 43, "products": {"Chat": 2125}, "models": {"claude-haiku-4-5-20251001": 36, "claude-sonnet-4-6": 206, "claude-sonnet-5": 1883}, "total_tokens": 274169245, "cache_ratio": 95.8}, {"email": "eric.kemp@centricityresearch.com", "name": "Eric Kemp", "requests": 655, "prompt_tokens": 129370990, "completion_tokens": 429836, "cache_read": 127108698, "web_searches": 2, "products": {"Chat": 655}, "models": {"claude-haiku-4-5-20251001": 1, "claude-sonnet-4-6": 29, "claude-sonnet-5": 625}, "total_tokens": 129800826, "cache_ratio": 98.3}, {"email": "marcha.gatewood@centricityresearch.com", "name": "Marcha Gatewood", "requests": 589, "prompt_tokens": 96171149, "completion_tokens": 563116, "cache_read": 91462427, "web_searches": 1, "products": {"Chat": 589}, "models": {"claude-haiku-4-5-20251001": 5, "claude-sonnet-4-6": 163, "claude-sonnet-5": 421}, "total_tokens": 96734265, "cache_ratio": 95.1}, {"email": "jordan.greene@centricityresearch.com", "name": "Jordan Greene", "requests": 817, "prompt_tokens": 89339371, "completion_tokens": 506670, "cache_read": 83112244, "web_searches": 62, "products": {"Chat": 447, "Cowork": 370}, "models": {"claude-haiku-4-5-20251001": 128, "claude-sonnet-4-6": 174, "claude-sonnet-5": 515}, "total_tokens": 89846041, "cache_ratio": 93.0}, {"email": "julia.brown@centricityresearch.com", "name": "Julia Brown", "requests": 503, "prompt_tokens": 55617594, "completion_tokens": 331244, "cache_read": 54151429, "web_searches": 5, "products": {"Chat": 503}, "models": {"claude-haiku-4-5-20251001": 9, "claude-sonnet-4-6": 3, "claude-sonnet-5": 491}, "total_tokens": 55948838, "cache_ratio": 97.4}, {"email": "delmas.brown@centricityresearch.com", "name": "Delmas Brown", "requests": 502, "prompt_tokens": 48758911, "completion_tokens": 402132, "cache_read": 45799194, "web_searches": 4, "products": {"Chat": 502}, "models": {"claude-fable-5": 413, "claude-haiku-4-5-20251001": 11, "claude-opus-5": 9, "claude-sonnet-4-6": 31, "claude-sonnet-5": 38}, "total_tokens": 49161043, "cache_ratio": 93.9}, {"email": "shaley@centricityresearch.com", "name": "Shaley", "requests": 412, "prompt_tokens": 44797327, "completion_tokens": 273181, "cache_read": 43031274, "web_searches": 3, "products": {"Chat": 384, "Claude Design": 24, "Office Agents": 4}, "models": {"claude-haiku-4-5-20251001": 9, "claude-opus-4-8": 137, "claude-sonnet-4-6": 37, "claude-sonnet-5": 207, "claude-opus-5": 21, "claude-opus-4-7": 1}, "total_tokens": 45070508, "cache_ratio": 96.1}, {"email": "lacey.hood@centricityresearch.com", "name": "Lacey Hood", "requests": 158, "prompt_tokens": 33233116, "completion_tokens": 166607, "cache_read": 31769396, "web_searches": 0, "products": {"Chat": 158}, "models": {"claude-opus-4-8": 148, "claude-fable-5": 6, "claude-haiku-4-5-20251001": 4}, "total_tokens": 33399723, "cache_ratio": 95.6}, {"email": "abinaya.sundaram@centricityresearch.com", "name": "Abinaya Sundaram", "requests": 193, "prompt_tokens": 31699309, "completion_tokens": 121583, "cache_read": 30443939, "web_searches": 0, "products": {"Claude Code": 193}, "models": {"claude-haiku-4-5-20251001": 8, "claude-sonnet-4-6": 8, "claude-sonnet-5": 177}, "total_tokens": 31820892, "cache_ratio": 96.0}, {"email": "raphael.brochu@centricityresearch.com", "name": "Raphael Brochu", "requests": 230, "prompt_tokens": 30609169, "completion_tokens": 170266, "cache_read": 28512796, "web_searches": 0, "products": {"Chat": 230}, "models": {"claude-haiku-4-5-20251001": 1, "claude-sonnet-4-6": 32, "claude-sonnet-5": 197}, "total_tokens": 30779435, "cache_ratio": 93.2}, {"email": "govardhan.pothala@centricityresearch.com", "name": "Govardhan Pothala", "requests": 473, "prompt_tokens": 26228435, "completion_tokens": 261520, "cache_read": 24278433, "web_searches": 0, "products": {"Office Agents": 473}, "models": {"claude-fable-5": 125, "claude-haiku-4-5-20251001": 241, "claude-opus-4-8": 107}, "total_tokens": 26489955, "cache_ratio": 92.6}, {"email": "prudhvi.teja@centricityresearch.com", "name": "Prudhvi Teja", "requests": 440, "prompt_tokens": 23038774, "completion_tokens": 231408, "cache_read": 21219570, "web_searches": 0, "products": {"Chat": 4, "Cowork": 1, "Office Agents": 435}, "models": {"claude-sonnet-5": 5, "claude-haiku-4-5-20251001": 214, "claude-opus-4-8": 168, "claude-opus-5": 53}, "total_tokens": 23270182, "cache_ratio": 92.1}, {"email": "stephanie.holloway@centricityresearch.com", "name": "Stephanie Holloway", "requests": 283, "prompt_tokens": 21596336, "completion_tokens": 164635, "cache_read": 20781951, "web_searches": 3, "products": {"Chat": 268, "Claude Design": 15}, "models": {"claude-haiku-4-5-20251001": 6, "claude-sonnet-5": 264, "claude-opus-4-8": 13}, "total_tokens": 21760971, "cache_ratio": 96.2}, {"email": "amanda.phillips@centricityresearch.com", "name": "Amanda Phillips", "requests": 351, "prompt_tokens": 21254682, "completion_tokens": 177648, "cache_read": 20499261, "web_searches": 0, "products": {"Chat": 63, "Office Agents": 288}, "models": {"claude-opus-5": 106, "claude-sonnet-4-6": 56, "claude-sonnet-5": 93, "claude-haiku-4-5-20251001": 96}, "total_tokens": 21432330, "cache_ratio": 96.4}, {"email": "talya.amor@centricityresearch.com", "name": "Talya Amor", "requests": 109, "prompt_tokens": 18733208, "completion_tokens": 81315, "cache_read": 18210363, "web_searches": 0, "products": {"Chat": 109}, "models": {"claude-haiku-4-5-20251001": 2, "claude-sonnet-5": 107}, "total_tokens": 18814523, "cache_ratio": 97.2}, {"email": "nicole.gagnon@centricityresearch.com", "name": "Nicole Gagnon", "requests": 250, "prompt_tokens": 17382233, "completion_tokens": 206304, "cache_read": 16587086, "web_searches": 5, "products": {"Chat": 219, "Claude Design": 31}, "models": {"claude-opus-5": 43, "claude-sonnet-5": 204, "claude-haiku-4-5-20251001": 3}, "total_tokens": 17588537, "cache_ratio": 95.4}, {"email": "bhuvana.venkataramanan@centricityresearch.com", "name": "Bhuvana Venkataramanan", "requests": 292, "prompt_tokens": 17315015, "completion_tokens": 243768, "cache_read": 16093064, "web_searches": 2, "products": {"Chat": 70, "Claude Code": 222}, "models": {"claude-haiku-4-5-20251001": 35, "claude-sonnet-4-6": 2, "claude-sonnet-5": 255}, "total_tokens": 17558783, "cache_ratio": 92.9}, {"email": "shakeel.abdul@centricityresearch.com", "name": "Shakeel Abdul", "requests": 223, "prompt_tokens": 16773791, "completion_tokens": 59044, "cache_read": 15391560, "web_searches": 11, "products": {"Chat": 218, "Cowork": 5}, "models": {"claude-haiku-4-5-20251001": 9, "claude-opus-4-8": 14, "claude-opus-5": 2, "claude-sonnet-4-6": 172, "claude-sonnet-5": 26}, "total_tokens": 16832835, "cache_ratio": 91.8}, {"email": "tristin.farris@centricityresearch.com", "name": "Tristin Farris", "requests": 256, "prompt_tokens": 16591739, "completion_tokens": 123794, "cache_read": 14670077, "web_searches": 0, "products": {"Chat": 256}, "models": {"claude-haiku-4-5-20251001": 6, "claude-sonnet-4-6": 23, "claude-sonnet-5": 227}, "total_tokens": 16715533, "cache_ratio": 88.4}, {"email": "ashley.morrison@centricityresearch.com", "name": "Ashley Morrison", "requests": 173, "prompt_tokens": 13082096, "completion_tokens": 113480, "cache_read": 11895376, "web_searches": 3, "products": {"Chat": 173}, "models": {"claude-haiku-4-5-20251001": 2, "claude-sonnet-5": 171}, "total_tokens": 13195576, "cache_ratio": 90.9}, {"email": "sujeetkumar.rai@centricityresearch.com", "name": "Sujeetkumar Rai", "requests": 214, "prompt_tokens": 9318742, "completion_tokens": 159044, "cache_read": 8413480, "web_searches": 4, "products": {"Chat": 76, "Office Agents": 138}, "models": {"claude-fable-5": 88, "claude-haiku-4-5-20251001": 106, "claude-opus-4-8": 20}, "total_tokens": 9477786, "cache_ratio": 90.3}, {"email": "tajinder.kaur@centricityresearch.com", "name": "Tajinder Kaur", "requests": 37, "prompt_tokens": 4200657, "completion_tokens": 20581, "cache_read": 3783364, "web_searches": 0, "products": {"Chat": 37}, "models": {"claude-haiku-4-5-20251001": 1, "claude-sonnet-5": 36}, "total_tokens": 4221238, "cache_ratio": 90.1}, {"email": "thahmina.rahman@centricityresearch.com", "name": "Thahmina Rahman", "requests": 42, "prompt_tokens": 3857807, "completion_tokens": 31791, "cache_read": 3733257, "web_searches": 0, "products": {"Chat": 42}, "models": {"claude-sonnet-5": 42}, "total_tokens": 3889598, "cache_ratio": 96.8}, {"email": "debayan.ghosh@centricityresearch.com", "name": "Debayan Ghosh", "requests": 44, "prompt_tokens": 3016443, "completion_tokens": 45393, "cache_read": 2873506, "web_searches": 1, "products": {"Chat": 44}, "models": {"claude-fable-5": 28, "claude-haiku-4-5-20251001": 2, "claude-sonnet-4-6": 14}, "total_tokens": 3061836, "cache_ratio": 95.3}, {"email": "alexandra.walton@centricityresearch.com", "name": "Alexandra Walton", "requests": 14, "prompt_tokens": 766573, "completion_tokens": 7489, "cache_read": 686280, "web_searches": 0, "products": {"Chat": 14}, "models": {"claude-haiku-4-5-20251001": 1, "claude-sonnet-5": 13}, "total_tokens": 774062, "cache_ratio": 89.5}, {"email": "jay.sinder@centricityresearch.com", "name": "Jay Sinder", "requests": 9, "prompt_tokens": 615941, "completion_tokens": 6653, "cache_read": 558106, "web_searches": 0, "products": {"Chat": 9}, "models": {"claude-sonnet-5": 9}, "total_tokens": 622594, "cache_ratio": 90.6}, {"email": "allison.reichenbach@centricityresearch.com", "name": "Allison Reichenbach", "requests": 5, "prompt_tokens": 259424, "completion_tokens": 1034, "cache_read": 240218, "web_searches": 0, "products": {"Chat": 5}, "models": {"claude-sonnet-5": 5}, "total_tokens": 260458, "cache_ratio": 92.6}, {"email": "(org service usage)", "name": "(org service usage)", "requests": 4, "prompt_tokens": 0, "completion_tokens": 0, "cache_read": 0, "web_searches": 0, "products": {"(other)": 4}, "models": {}, "total_tokens": 0, "cache_ratio": 0}], "products": {"Chat": {"requests": 18281, "tokens": 4203964289}, "Claude Code": {"requests": 23415, "tokens": 7788786430}, "Office Agents": {"requests": 1353, "tokens": 69496362}, "(other)": {"requests": 4, "tokens": 0}, "Cowork": {"requests": 4400, "tokens": 1846100587}, "Claude Design": {"requests": 70, "tokens": 2955272}, "Claude in Chrome": {"requests": 1348, "tokens": 162882613}}, "models": {"claude-fable-5": {"requests": 2755, "tokens": 795595724}, "claude-sonnet-5": {"requests": 26759, "tokens": 6370543610}, "claude-opus-5": {"requests": 371, "tokens": 86864443}, "claude-sonnet-4-6": {"requests": 2778, "tokens": 364782779}, "claude-opus-4-8": {"requests": 14413, "tokens": 6450454337}, "claude-haiku-4-5-20251001": {"requests": 1790, "tokens": 5915389}, "claude-opus-4-7": {"requests": 1, "tokens": 29271}}, "members": [{"name": "Ellen Smith", "email": "ellen.smith@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Govardhan Pothala", "email": "govardhan.pothala@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Lacey Hood", "email": "lacey.hood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Sujeet Kumar Rai", "email": "sujeetkumar.rai@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Nicole Gagnon", "email": "nicole.gagnon@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Shakeel Abdul", "email": "shakeel.abdul@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Jay Sinder", "email": "jay.sinder@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Raphael Brochu, MBA", "email": "raphael.brochu@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Thahmina Rahman", "email": "thahmina.rahman@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Prudhvi Teja B", "email": "prudhvi.teja@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Delmas Brown", "email": "delmas.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Susannah Haley", "email": "shaley@centricityresearch.com", "role": "Primary Owner", "status": "Active", "tier": "Standard"}, {"name": "Talya Amor", "email": "talya.amor@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Abinaya Sundaram", "email": "abinaya.sundaram@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anjali Gurnani", "email": "anjali.gurnani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Debayan Ghosh", "email": "debayan.ghosh@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Stephanie Holloway", "email": "stephanie.holloway@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Cooper", "email": "cooper.brownlee@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Marcha Gatewood", "email": "marcha.gatewood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Amanda Clary-Phillips, LPN, CCRC", "email": "amanda.phillips@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Julia Brown", "email": "julia.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Abhishek Singhvi", "email": "abhishek.singhvi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anita Rani", "email": "anita.rani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Kaylee Bankston", "email": "kaylee.bankston@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Ashley Morrison", "email": "ashley.morrison@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Allison Reichenbach", "email": "allison.reichenbach@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Baskaran Marichetty", "email": "baskaran.marichetty@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Alexandra Walton", "email": "alexandra.walton@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tristin Farris", "email": "tristin.farris@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jordan Greene, MS, CCRC, ACRP-PM", "email": "jordan.greene@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Emily Waddington", "email": "emily.waddington@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Navin Raj", "email": "navin.raj@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Tajinder Kaur", "email": "tajinder.kaur@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Morgan Chavez", "email": "morgan.chavez@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Bhuvana Venkataramanan", "email": "bhuvana.venkataramanan@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Mani Deepak G", "email": "mani.d@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jake Choi", "email": "jake.choi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Koteeswaran Ramachandran", "email": "koteeswaran.ramachandran@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Eric Kemp, BSc Honours, CCRC, ACRP-PM", "email": "eric.kemp@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}]};
+
+// ── Month store: persists uploaded months across sessions ──
+const STORE_KEY = 'claudeUsageMonths_v1';
+function loadStore(){ try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch(e){ return {}; } }
+function persistStore(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(monthStore)); } catch(e){ console.warn('Storage unavailable:', e); } }
+const EMBEDDED_AUGUST = {"summary": {"period": "August 2026", "periodKey": "2026-08", "total_requests": 67385, "total_prompt_tokens": 18736032374, "total_completion_tokens": 57421402, "total_tokens": 18793453776, "total_cache_read": 18053326912, "total_web_searches": 39, "unique_users": 35}, "users": [{"email": "navin.raj@centricityresearch.com", "name": "Navin Raj", "requests": 10270, "prompt_tokens": 5210658564, "completion_tokens": 8559981, "cache_read": 5069230152, "web_searches": 9, "products": {"Claude Code": 10270}, "models": {"claude-haiku-4-5-20251001": 42, "claude-opus-4-8": 8291, "claude-opus-5": 1937}, "total_tokens": 5219218545, "cache_ratio": 97.3}, {"email": "anjali.gurnani@centricityresearch.com", "name": "Anjali Gurnani", "requests": 9209, "prompt_tokens": 3504686024, "completion_tokens": 9726027, "cache_read": 3363598541, "web_searches": 5, "products": {"Cowork": 9195, "Chat": 4, "Claude in Chrome": 10}, "models": {"claude-opus-4-8": 5851, "claude-opus-5": 2636, "claude-haiku-4-5-20251001": 671, "claude-sonnet-5": 51}, "total_tokens": 3514412051, "cache_ratio": 96.0}, {"email": "baskaran.marichetty@centricityresearch.com", "name": "Baskaran Marichetty", "requests": 3477, "prompt_tokens": 1308176303, "completion_tokens": 6361214, "cache_read": 1263215041, "web_searches": 0, "products": {"Chat": 3477}, "models": {"claude-sonnet-5": 3476, "claude-sonnet-4-6": 1}, "total_tokens": 1314537517, "cache_ratio": 96.6}, {"email": "abhishek.singhvi@centricityresearch.com", "name": "Abhishek Singhvi", "requests": 3158, "prompt_tokens": 1301454525, "completion_tokens": 4038999, "cache_read": 1238450836, "web_searches": 0, "products": {"Chat": 2088, "Cowork": 586, "Claude Code": 481, "Claude in Chrome": 3}, "models": {"claude-opus-5": 2041, "claude-sonnet-4-6": 52, "claude-opus-4-8": 43, "claude-haiku-4-5-20251001": 100, "claude-sonnet-5": 922}, "total_tokens": 1305493524, "cache_ratio": 95.2}, {"email": "shakeel.abdul@centricityresearch.com", "name": "Shakeel Abdul", "requests": 5135, "prompt_tokens": 921847751, "completion_tokens": 2609489, "cache_read": 868770019, "web_searches": 7, "products": {"Chat": 437, "Cowork": 153, "Office Agents": 4545}, "models": {"claude-opus-4-8": 77, "claude-sonnet-5": 362, "claude-haiku-4-5-20251001": 1732, "claude-opus-5": 2964}, "total_tokens": 924457240, "cache_ratio": 94.2}, {"email": "cooper.brownlee@centricityresearch.com", "name": "Cooper Brownlee", "requests": 5315, "prompt_tokens": 897703069, "completion_tokens": 3592206, "cache_read": 869112472, "web_searches": 0, "products": {"Chat": 5315}, "models": {"claude-haiku-4-5-20251001": 1, "claude-sonnet-5": 5314}, "total_tokens": 901295275, "cache_ratio": 96.8}, {"email": "jake.choi@centricityresearch.com", "name": "Jake Choi", "requests": 2033, "prompt_tokens": 744078451, "completion_tokens": 2102698, "cache_read": 721399082, "web_searches": 0, "products": {"Cowork": 1384, "Chat": 649}, "models": {"claude-sonnet-5": 1889, "claude-haiku-4-5-20251001": 144}, "total_tokens": 746181149, "cache_ratio": 97.0}, {"email": "koteeswaran.ramachandran@centricityresearch.com", "name": "Koteeswaran Ramachandran", "requests": 3675, "prompt_tokens": 684429875, "completion_tokens": 2571333, "cache_read": 666120574, "web_searches": 0, "products": {"Claude Code": 3669, "Chat": 6}, "models": {"claude-fable-5": 2323, "claude-sonnet-5": 1244, "claude-haiku-4-5-20251001": 44, "claude-opus-5": 64}, "total_tokens": 687001208, "cache_ratio": 97.3}, {"email": "anita.rani@centricityresearch.com", "name": "Anita Rani", "requests": 3716, "prompt_tokens": 561846102, "completion_tokens": 3029850, "cache_read": 550487915, "web_searches": 0, "products": {"Chat": 306, "Claude Code": 3410}, "models": {"claude-sonnet-5": 3627, "claude-haiku-4-5-20251001": 89}, "total_tokens": 564875952, "cache_ratio": 98.0}, {"email": "jordan.greene@centricityresearch.com", "name": "Jordan Greene", "requests": 3449, "prompt_tokens": 552464320, "completion_tokens": 2153986, "cache_read": 523809119, "web_searches": 2, "products": {"Cowork": 2686, "Chat": 762, "Claude in Chrome": 1}, "models": {"claude-sonnet-5": 2274, "claude-haiku-4-5-20251001": 528, "claude-sonnet-4-6": 647}, "total_tokens": 554618306, "cache_ratio": 94.8}, {"email": "julia.brown@centricityresearch.com", "name": "Julia Brown", "requests": 1994, "prompt_tokens": 500656257, "completion_tokens": 1762310, "cache_read": 486702258, "web_searches": 0, "products": {"Chat": 1316, "Cowork": 678}, "models": {"claude-sonnet-5": 1883, "claude-haiku-4-5-20251001": 111}, "total_tokens": 502418567, "cache_ratio": 97.2}, {"email": "shaley@centricityresearch.com", "name": "Shaley", "requests": 1853, "prompt_tokens": 481300685, "completion_tokens": 976304, "cache_read": 454648308, "web_searches": 15, "products": {"Claude Code": 1453, "Chat": 400}, "models": {"claude-fable-5": 142, "claude-opus-5": 683, "claude-haiku-4-5-20251001": 191, "claude-sonnet-5": 837}, "total_tokens": 482276989, "cache_ratio": 94.5}, {"email": "kaylee.bankston@centricityresearch.com", "name": "Kaylee Bankston", "requests": 1566, "prompt_tokens": 325095117, "completion_tokens": 1155365, "cache_read": 316630265, "web_searches": 0, "products": {"Chat": 1566}, "models": {"claude-sonnet-5": 1566}, "total_tokens": 326250482, "cache_ratio": 97.4}, {"email": "raphael.brochu@centricityresearch.com", "name": "Raphael Brochu", "requests": 816, "prompt_tokens": 267426701, "completion_tokens": 712303, "cache_read": 258464397, "web_searches": 0, "products": {"Chat": 556, "Cowork": 260}, "models": {"claude-sonnet-5": 699, "claude-sonnet-4-6": 65, "claude-haiku-4-5-20251001": 52}, "total_tokens": 268139004, "cache_ratio": 96.6}, {"email": "ellen.smith@centricityresearch.com", "name": "Ellen Smith", "requests": 1979, "prompt_tokens": 266389840, "completion_tokens": 1232428, "cache_read": 253219849, "web_searches": 0, "products": {"Chat": 324, "Cowork": 1655}, "models": {"claude-sonnet-5": 1511, "claude-haiku-4-5-20251001": 468}, "total_tokens": 267622268, "cache_ratio": 95.1}, {"email": "marcha.gatewood@centricityresearch.com", "name": "Marcha Gatewood", "requests": 1269, "prompt_tokens": 227107658, "completion_tokens": 1195601, "cache_read": 215290734, "web_searches": 0, "products": {"Chat": 594, "Cowork": 675}, "models": {"claude-sonnet-4-6": 209, "claude-sonnet-5": 966, "claude-haiku-4-5-20251001": 94}, "total_tokens": 228303259, "cache_ratio": 94.8}, {"email": "ashley.morrison@centricityresearch.com", "name": "Ashley Morrison", "requests": 1044, "prompt_tokens": 150703222, "completion_tokens": 664172, "cache_read": 146785795, "web_searches": 0, "products": {"Chat": 1044}, "models": {"claude-sonnet-5": 1044}, "total_tokens": 151367394, "cache_ratio": 97.4}, {"email": "abinaya.sundaram@centricityresearch.com", "name": "Abinaya Sundaram", "requests": 817, "prompt_tokens": 127037050, "completion_tokens": 592937, "cache_read": 122327443, "web_searches": 0, "products": {"Chat": 182, "Claude Code": 635}, "models": {"claude-sonnet-5": 795, "claude-haiku-4-5-20251001": 22}, "total_tokens": 127629987, "cache_ratio": 96.3}, {"email": "eric.kemp@centricityresearch.com", "name": "Eric Kemp", "requests": 880, "prompt_tokens": 119253833, "completion_tokens": 641260, "cache_read": 113664819, "web_searches": 0, "products": {"Chat": 429, "Cowork": 451}, "models": {"claude-sonnet-4-6": 35, "claude-sonnet-5": 753, "claude-haiku-4-5-20251001": 92}, "total_tokens": 119895093, "cache_ratio": 95.3}, {"email": "delmas.brown@centricityresearch.com", "name": "Delmas Brown", "requests": 692, "prompt_tokens": 108458023, "completion_tokens": 720293, "cache_read": 104482469, "web_searches": 0, "products": {"Chat": 648, "Office Agents": 44}, "models": {"claude-fable-5": 12, "claude-opus-5": 667, "claude-haiku-4-5-20251001": 13}, "total_tokens": 109178316, "cache_ratio": 96.3}, {"email": "prudhvi.teja@centricityresearch.com", "name": "Prudhvi Teja", "requests": 699, "prompt_tokens": 98161862, "completion_tokens": 561609, "cache_read": 95450854, "web_searches": 0, "products": {"Chat": 368, "Cowork": 10, "Office Agents": 321}, "models": {"claude-sonnet-5": 374, "claude-haiku-4-5-20251001": 151, "claude-opus-5": 174}, "total_tokens": 98723471, "cache_ratio": 97.2}, {"email": "nicole.gagnon@centricityresearch.com", "name": "Nicole Gagnon", "requests": 766, "prompt_tokens": 73897897, "completion_tokens": 422464, "cache_read": 67411439, "web_searches": 0, "products": {"Chat": 184, "Cowork": 582}, "models": {"claude-sonnet-5": 593, "claude-haiku-4-5-20251001": 173}, "total_tokens": 74320361, "cache_ratio": 91.2}, {"email": "govardhan.pothala@centricityresearch.com", "name": "Govardhan Pothala", "requests": 729, "prompt_tokens": 57639332, "completion_tokens": 455681, "cache_read": 54438580, "web_searches": 0, "products": {"Cowork": 246, "Office Agents": 483}, "models": {"claude-haiku-4-5-20251001": 212, "claude-sonnet-5": 214, "claude-opus-5": 303}, "total_tokens": 58095013, "cache_ratio": 94.4}, {"email": "sujeetkumar.rai@centricityresearch.com", "name": "Sujeetkumar Rai", "requests": 675, "prompt_tokens": 46786064, "completion_tokens": 324530, "cache_read": 45324860, "web_searches": 0, "products": {"Voice Mode": 205, "Chat": 197, "Cowork": 268, "Office Agents": 5}, "models": {"claude-opus-5": 388, "claude-fable-5": 16, "claude-sonnet-4-6": 2, "claude-haiku-4-5-20251001": 25, "claude-sonnet-5": 244}, "total_tokens": 47110594, "cache_ratio": 96.9}, {"email": "amanda.phillips@centricityresearch.com", "name": "Amanda Phillips", "requests": 479, "prompt_tokens": 45235925, "completion_tokens": 250928, "cache_read": 42852584, "web_searches": 1, "products": {"Chat": 265, "Office Agents": 214}, "models": {"claude-opus-5": 263, "claude-sonnet-5": 155, "claude-haiku-4-5-20251001": 61}, "total_tokens": 45486853, "cache_ratio": 94.7}, {"email": "patrick.sumdey@centricityresearch.com", "name": "Patrick Sumdey", "requests": 730, "prompt_tokens": 42683855, "completion_tokens": 313620, "cache_read": 39485776, "web_searches": 0, "products": {"Chat": 143, "Cowork": 61, "Office Agents": 526}, "models": {"claude-sonnet-5": 182, "claude-haiku-4-5-20251001": 283, "claude-opus-5": 265}, "total_tokens": 42997475, "cache_ratio": 92.5}, {"email": "thahmina.rahman@centricityresearch.com", "name": "Thahmina Rahman", "requests": 293, "prompt_tokens": 39695433, "completion_tokens": 199599, "cache_read": 38747418, "web_searches": 0, "products": {"Chat": 293}, "models": {"claude-sonnet-5": 293}, "total_tokens": 39895032, "cache_ratio": 97.6}, {"email": "tristin.farris@centricityresearch.com", "name": "Tristin Farris", "requests": 235, "prompt_tokens": 33025854, "completion_tokens": 190351, "cache_read": 27287151, "web_searches": 0, "products": {"Chat": 235}, "models": {"claude-sonnet-5": 235}, "total_tokens": 33216205, "cache_ratio": 82.6}, {"email": "stephanie.holloway@centricityresearch.com", "name": "Stephanie Holloway", "requests": 238, "prompt_tokens": 19650938, "completion_tokens": 198466, "cache_read": 18174608, "web_searches": 0, "products": {"Chat": 38, "Cowork": 200}, "models": {"claude-sonnet-5": 206, "claude-haiku-4-5-20251001": 32}, "total_tokens": 19849404, "cache_ratio": 92.5}, {"email": "allison.reichenbach@centricityresearch.com", "name": "Allison Reichenbach", "requests": 85, "prompt_tokens": 11598834, "completion_tokens": 74967, "cache_read": 11242435, "web_searches": 0, "products": {"Chat": 85}, "models": {"claude-sonnet-5": 85}, "total_tokens": 11673801, "cache_ratio": 96.9}, {"email": "lacey.hood@centricityresearch.com", "name": "Lacey Hood", "requests": 37, "prompt_tokens": 4214500, "completion_tokens": 16931, "cache_read": 4132443, "web_searches": 0, "products": {"Chat": 37}, "models": {"claude-opus-5": 37}, "total_tokens": 4231431, "cache_ratio": 98.1}, {"email": "tajinder.kaur@centricityresearch.com", "name": "Tajinder Kaur", "requests": 28, "prompt_tokens": 2044205, "completion_tokens": 10411, "cache_read": 1852739, "web_searches": 0, "products": {"Chat": 28}, "models": {"claude-sonnet-5": 28}, "total_tokens": 2054616, "cache_ratio": 90.6}, {"email": "talya.amor@centricityresearch.com", "name": "Talya Amor", "requests": 9, "prompt_tokens": 559877, "completion_tokens": 2602, "cache_read": 460177, "web_searches": 0, "products": {"Cowork": 9}, "models": {"claude-haiku-4-5-20251001": 2, "claude-sonnet-5": 7}, "total_tokens": 562479, "cache_ratio": 82.2}, {"email": "jay.sinder@centricityresearch.com", "name": "Jay Sinder", "requests": 1, "prompt_tokens": 64428, "completion_tokens": 487, "cache_read": 55760, "web_searches": 0, "products": {"Chat": 1}, "models": {"claude-sonnet-5": 1}, "total_tokens": 64915, "cache_ratio": 86.5}, {"email": "(org service usage)", "name": "(org service usage)", "requests": 34, "prompt_tokens": 0, "completion_tokens": 0, "cache_read": 0, "web_searches": 0, "products": {"(other)": 34}, "models": {}, "total_tokens": 0, "cache_ratio": 0}], "products": {"Claude Code": {"requests": 19918, "tokens": 7002670479}, "Chat": {"requests": 21977, "tokens": 6002217165}, "Cowork": {"requests": 19099, "tokens": 4808107765}, "Voice Mode": {"requests": 205, "tokens": 7204355}, "(other)": {"requests": 34, "tokens": 0}, "Claude in Chrome": {"requests": 14, "tokens": 220573}, "Office Agents": {"requests": 6138, "tokens": 915612037}}, "models": {"claude-fable-5": {"requests": 2493, "tokens": 448923175}, "claude-opus-5": {"requests": 12422, "tokens": 4089317838}, "claude-opus-4-8": {"requests": 14262, "tokens": 7027310324}, "claude-sonnet-5": {"requests": 31830, "tokens": 6890844290}, "claude-sonnet-4-6": {"requests": 1011, "tokens": 263411612}, "claude-haiku-4-5-20251001": {"requests": 5333, "tokens": 16225135}}, "members": [{"name": "Abhishek Singhvi", "email": "abhishek.singhvi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Abinaya Sundaram", "email": "abinaya.sundaram@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Allison Reichenbach", "email": "allison.reichenbach@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Amanda Clary-Phillips, LPN, CCRC", "email": "amanda.phillips@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anita Rani", "email": "anita.rani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anjali Gurnani", "email": "anjali.gurnani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Ashley Morrison", "email": "ashley.morrison@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Baskaran Marichetty", "email": "baskaran.marichetty@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Cooper", "email": "cooper.brownlee@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Delmas Brown", "email": "delmas.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Ellen Smith", "email": "ellen.smith@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Emily Waddington", "email": "emily.waddington@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Eric Kemp, BSc Honours, CCRC, ACRP-PM", "email": "eric.kemp@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Govardhan Pothala", "email": "govardhan.pothala@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jake Choi", "email": "jake.choi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jay Sinder", "email": "jay.sinder@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jordan Greene, MS, CCRC, ACRP-PM", "email": "jordan.greene@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Julia Brown", "email": "julia.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Kaylee Bankston", "email": "kaylee.bankston@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Koteeswaran Ramachandran", "email": "koteeswaran.ramachandran@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Lacey Hood", "email": "lacey.hood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Mani Deepak G", "email": "mani.d@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Marcha Gatewood", "email": "marcha.gatewood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Morgan Chavez", "email": "morgan.chavez@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Navin Raj", "email": "navin.raj@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Nicole Gagnon", "email": "nicole.gagnon@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Patrick Sumdey", "email": "patrick.sumdey@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Prudhvi Teja B", "email": "prudhvi.teja@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Raphael Brochu, MBA", "email": "raphael.brochu@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Shakeel Abdul", "email": "shakeel.abdul@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Susannah Haley", "email": "shaley@centricityresearch.com", "role": "Primary Owner", "status": "Active", "tier": "Standard"}, {"name": "Stephanie Holloway", "email": "stephanie.holloway@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Sujeet Kumar Rai", "email": "sujeetkumar.rai@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tajinder Kaur", "email": "tajinder.kaur@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Talya Amor", "email": "talya.amor@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Thahmina Rahman", "email": "thahmina.rahman@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tristin Farris", "email": "tristin.farris@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}]};
+// Attach accurate per-month rosters (drives seat count + cost)
+EMBEDDED_DATA.members = [{"name": "Abinaya Sundaram", "email": "abinaya.sundaram@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Amanda Clary-Phillips, LPN, CCRC", "email": "amanda.phillips@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anita Rani", "email": "anita.rani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anjali Gurnani", "email": "anjali.gurnani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Ashley Morrison", "email": "ashley.morrison@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Baskaran Marichetty", "email": "baskaran.marichetty@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Bhuvana Venkataramanan", "email": "bhuvana.venkataramanan@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Cooper", "email": "cooper.brownlee@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Ellen Smith", "email": "ellen.smith@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Emily Waddington", "email": "emily.waddington@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Eric Kemp, BSc Honours, CCRC, ACRP-PM", "email": "eric.kemp@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Govardhan Pothala", "email": "govardhan.pothala@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jordan Greene, MS, CCRC, ACRP-PM", "email": "jordan.greene@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Julia Brown", "email": "julia.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Katharine Gouthro", "email": "katharine.gouthro@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Koteeswaran Ramachandran", "email": "koteeswaran.ramachandran@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Lacey Hood", "email": "lacey.hood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Mani Deepak G", "email": "mani.d@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Marcha Gatewood", "email": "marcha.gatewood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Morgan Chavez", "email": "morgan.chavez@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Prudhvi Teja B", "email": "prudhvi.teja@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Raphael Brochu, MBA", "email": "raphael.brochu@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Shakeel Abdul", "email": "shakeel.abdul@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Susannah Haley", "email": "shaley@centricityresearch.com", "role": "Primary Owner", "status": "Active", "tier": "Standard"}, {"name": "Suman Jakka", "email": "suman.jakka@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tajinder Kaur", "email": "tajinder.kaur@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Talya Amor", "email": "talya.amor@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tristin Farris", "email": "tristin.farris@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}];
+EMBEDDED_JUNE.members = [{"name": "Abhishek Singhvi", "email": "abhishek.singhvi@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Abinaya Sundaram", "email": "abinaya.sundaram@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Alexandra Walton", "email": "alexandra.walton@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Amanda Clary-Phillips, LPN, CCRC", "email": "amanda.phillips@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anita Rani", "email": "anita.rani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Anjali Gurnani", "email": "anjali.gurnani@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Ashley Morrison", "email": "ashley.morrison@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Baskaran Marichetty", "email": "baskaran.marichetty@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Bhuvana Venkataramanan", "email": "bhuvana.venkataramanan@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Cooper", "email": "cooper.brownlee@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Debayan Ghosh", "email": "debayan.ghosh@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Delmas Brown", "email": "delmas.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Ellen Smith", "email": "ellen.smith@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Emily Waddington", "email": "emily.waddington@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Eric Kemp, BSc Honours, CCRC, ACRP-PM", "email": "eric.kemp@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Govardhan Pothala", "email": "govardhan.pothala@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Jordan Greene, MS, CCRC, ACRP-PM", "email": "jordan.greene@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Julia Brown", "email": "julia.brown@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Katharine Gouthro", "email": "katharine.gouthro@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Koteeswaran Ramachandran", "email": "koteeswaran.ramachandran@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Lacey Hood", "email": "lacey.hood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Mani Deepak G", "email": "mani.d@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Marcha Gatewood", "email": "marcha.gatewood@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Morgan Chavez", "email": "morgan.chavez@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Navin Raj", "email": "navin.raj@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Prudhvi Teja B", "email": "prudhvi.teja@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Rajni Pareek", "email": "rajni.pareek@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Raphael Brochu, MBA", "email": "raphael.brochu@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Shakeel Abdul", "email": "shakeel.abdul@centricityresearch.com", "role": "User", "status": "Active", "tier": "Premium"}, {"name": "Susannah Haley", "email": "shaley@centricityresearch.com", "role": "Primary Owner", "status": "Active", "tier": "Standard"}, {"name": "Stephanie Holloway", "email": "stephanie.holloway@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Suman Jakka", "email": "suman.jakka@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tajinder Kaur", "email": "tajinder.kaur@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Talya Amor", "email": "talya.amor@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}, {"name": "Tristin Farris", "email": "tristin.farris@centricityresearch.com", "role": "User", "status": "Active", "tier": "Standard"}];
+// Baked months are the source of truth: they overlay localStorage so accurate rosters always win;
+// any additional uploaded months (not baked) still persist.
+let monthStore = Object.assign({}, loadStore(), { '2026-05': EMBEDDED_DATA, '2026-06': EMBEDDED_JUNE, '2026-07': EMBEDDED_JULY, '2026-08': EMBEDDED_AUGUST });
+function monthKeys(){ return Object.keys(monthStore).sort().reverse(); }
+function rebuildMonthSelect(selected){
+  const sel = document.getElementById('month-select');
+  if (!sel) return;
+  const keys = monthKeys();
+  sel.innerHTML = keys.map(k => '<option value="'+k+'">'+monthStore[k].summary.period+'</option>').join('');
+  sel.value = selected || keys[0];
+}
+function showMonth(key){
+  if (!monthStore[key]) return;
+  renderDashboard(monthStore[key]);
+  const sel = document.getElementById('month-select');
+  if (sel) sel.value = key;
+}
+function ingestUpload(data){
+  let key = data.summary.periodKey;
+  if (!key || key.indexOf('upload-') === 0) key = 'upload-' + Date.now();
+  data.summary.periodKey = key;
+  const existing = monthStore[key];
+  if (existing && existing.members) data.members = existing.members;   // keep members on spend re-upload
+  monthStore[key] = data;
+  persistStore();
+  rebuildMonthSelect(key);
+  showMonth(key);
+  document.getElementById('upload-overlay').classList.remove('show');
+}
+
+// Detect a members export vs a spend report from its header row
+function isMembersCSV(text){
+  const first = (text.split(/\r?\n/)[0] || '').toLowerCase();
+  return first.includes('seat tier') || (first.includes('email') && first.includes('status') && first.includes('role'));
+}
+function parseMembers(text){
+  return parseCSV(text).map(r => ({
+    name:  (r['Name'] || r['name'] || '').trim(),
+    email: (r['Email'] || r['email'] || '').trim().toLowerCase(),
+    role:  (r['Role'] || r['role'] || 'User').trim(),
+    status:(r['Status'] || r['status'] || 'Active').trim(),
+    tier:  (r['Seat Tier'] || r['seat tier'] || r['Tier'] || 'Standard').trim()
+  })).filter(m => m.email);
+}
+function ingestMembers(text){
+  const members = parseMembers(text);
+  if (!members.length){ alert('No members found in that file.'); return; }
+  const key = (document.getElementById('month-select') || {}).value || monthKeys()[0];
+  if (!key || !monthStore[key]){ alert('Pick a month first, then upload the members file for it.'); return; }
+  monthStore[key] = Object.assign({}, monthStore[key], { members });
+  persistStore();
+  showMonth(key);
+  document.getElementById('upload-overlay').classList.remove('show');
+  const st = members.filter(m => m.tier==='Standard' && (m.status||'Active').toLowerCase()==='active').length;
+  const pr = members.filter(m => m.tier==='Premium' && (m.status||'Active').toLowerCase()==='active').length;
+  alert('Members applied to ' + monthStore[key].summary.period + ': ' + st + ' standard + ' + pr + ' premium = $' + (st*RATE_STANDARD+pr*RATE_PREMIUM).toLocaleString() + '/mo');
+}
+function handleUploadedFile(text, filename){
+  if (isMembersCSV(text)) ingestMembers(text);
+  else { const data = processCSV(text, filename); if (data) ingestUpload(data); }
+}
+
+// Export/import all stored months (backup + move between URLs)
+function exportData(){
+  const payload = { __type:'claude-usage-backup', months: monthStore, invoices: invoiceList };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'claude-usage-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importData(text){
+  let obj;
+  try { obj = JSON.parse(text); } catch(e){ alert('That file is not valid backup JSON.'); return; }
+  if (!obj || typeof obj !== 'object'){ alert('Unexpected backup format.'); return; }
+  const months = obj.months ? obj.months : obj;                 // new format has .months; old is months-only
+  const invs = Array.isArray(obj.invoices) ? obj.invoices : null;
+  if (months && typeof months === 'object' && !Array.isArray(months)){
+    Object.keys(months).forEach(k => { monthStore[k] = months[k]; });
+    persistStore(); rebuildMonthSelect(monthKeys()[0]); showMonth(monthKeys()[0]);
+  }
+  if (invs){
+    const byNum = {}; invoiceList.forEach(i => byNum[i.number]=i); invs.forEach(i => byNum[i.number]=i);
+    invoiceList = Object.values(byNum); persistInvoices(); renderInvoices();
+  }
+  alert('Import complete.');
+}
+
+// ── Invoices (actual billed amounts, separate from usage) ──
+const INVOICES_SEED = [{"number": "DMI9HEOI-0001", "date": "2026-03-20", "amount": 0.0, "category": "renewal", "memo": "Initial signup \u2014 5 standard (REFUNDED, $125.00)"}, {"number": "DMI9HEOI-0002", "date": "2026-03-22", "amount": 136.56, "category": "renewal", "memo": "5 standard (first cycle)"}, {"number": "DMI9HEOI-0003", "date": "2026-03-22", "amount": 163.64, "category": "proration", "memo": "Standard 5\u219211"}, {"number": "DMI9HEOI-0004", "date": "2026-04-01", "amount": 18.3, "category": "proration", "memo": "Standard 11\u219212"}, {"number": "DMI9HEOI-0005", "date": "2026-04-06", "amount": 56.89, "category": "proration", "memo": "+1 premium"}, {"number": "DMI9HEOI-0006", "date": "2026-04-06", "amount": 56.23, "category": "proration", "memo": "Premium 1\u21922"}, {"number": "DMI9HEOI-0007", "date": "2026-04-06", "amount": 13.89, "category": "proration", "memo": "Standard 10\u219211"}, {"number": "DMI9HEOI-0008", "date": "2026-04-07", "amount": 13.17, "category": "proration", "memo": "Standard 11\u219212"}, {"number": "DMI9HEOI-0009", "date": "2026-04-21", "amount": 0.54, "category": "proration", "memo": "Standard 12\u219213"}, {"number": "DMI9HEOI-0010", "date": "2026-04-22", "amount": 628.19, "category": "renewal", "memo": "13 standard + 2 premium"}, {"number": "DMI9HEOI-0011", "date": "2026-04-22", "amount": 54.52, "category": "proration", "memo": "Standard 13\u219215"}, {"number": "DMI9HEOI-0012", "date": "2026-04-30", "amount": 100.46, "category": "proration", "memo": "Standard 15\u219220"}, {"number": "DMI9HEOI-0013", "date": "2026-05-15", "amount": 6.18, "category": "proration", "memo": "Standard 20\u219221"}, {"number": "DMI9HEOI-0014", "date": "2026-05-18", "amount": 3.7, "category": "proration", "memo": "Standard 21\u219222"}, {"number": "DMI9HEOI-0015", "date": "2026-05-18", "amount": 3.61, "category": "proration", "memo": "Standard 22\u219223"}, {"number": "DMI9HEOI-0016", "date": "2026-05-21", "amount": 1.73, "category": "proration", "memo": "Standard 23\u219225"}, {"number": "DMI9HEOI-0017", "date": "2026-05-22", "amount": 955.94, "category": "renewal", "memo": "25 standard + 2 premium"}, {"number": "DMI9HEOI-0018", "date": "2026-05-27", "amount": 22.92, "category": "proration", "memo": "Standard 25\u219226"}, {"number": "DMI9HEOI-0019", "date": "2026-06-01", "amount": 92.87, "category": "proration", "memo": "Premium 2\u21923"}, {"number": "DMI9HEOI-0020", "date": "2026-06-05", "amount": 15.03, "category": "proration", "memo": "Standard 26\u219227"}, {"number": "DMI9HEOI-0021", "date": "2026-06-05", "amount": 14.9, "category": "proration", "memo": "Standard 27\u219228"}, {"number": "DMI9HEOI-0022", "date": "2026-06-16", "amount": 218.5, "category": "usage", "memo": "Prepaid extra usage ($200)"}, {"number": "DMI9HEOI-0023", "date": "2026-06-22", "amount": 1174.44, "category": "renewal", "memo": "28 standard + 3 premium"}, {"number": "DMI9HEOI-0024", "date": "2026-07-06", "amount": 14.42, "category": "proration", "memo": "Standard 28\u219229"}, {"number": "DMI9HEOI-0025", "date": "2026-07-08", "amount": 12.66, "category": "proration", "memo": "Standard 29\u219230"}, {"number": "DMI9HEOI-0026", "date": "2026-07-08", "amount": 12.66, "category": "proration", "memo": "Standard 30\u219231"}, {"number": "DMI9HEOI-0027", "date": "2026-07-09", "amount": 11.9, "category": "proration", "memo": "Standard 31\u219232"}, {"number": "DMI9HEOI-0028", "date": "2026-07-09", "amount": 11.67, "category": "proration", "memo": "Standard 32\u219233"}, {"number": "DMI9HEOI-0029", "date": "2026-07-16", "amount": 11.13, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0030", "date": "2026-07-16", "amount": 5.25, "category": "proration", "memo": "Standard 33\u219234"}, {"number": "DMI9HEOI-0031", "date": "2026-07-20", "amount": 11.34, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0032", "date": "2026-07-22", "amount": 10.95, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0033", "date": "2026-07-22", "amount": 11.29, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0034", "date": "2026-07-22", "amount": 11.24, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0035", "date": "2026-07-22", "amount": 1338.31, "category": "renewal", "memo": "34 standard + 3 premium"}, {"number": "DMI9HEOI-0036", "date": "2026-07-23", "amount": 13.84, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0037", "date": "2026-07-23", "amount": 11.55, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0038", "date": "2026-07-24", "amount": 13.06, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0039", "date": "2026-07-27", "amount": 11.3, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0040", "date": "2026-07-27", "amount": 11.56, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0041", "date": "2026-07-27", "amount": 11.5, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0042", "date": "2026-07-27", "amount": 11.21, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0043", "date": "2026-07-27", "amount": 22.91, "category": "proration", "memo": "Standard 34\u219235"}, {"number": "DMI9HEOI-0044", "date": "2026-07-27", "amount": 11.84, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0045", "date": "2026-07-29", "amount": 11.79, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0046", "date": "2026-07-30", "amount": 11.07, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0047", "date": "2026-07-31", "amount": 11.11, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0048", "date": "2026-07-31", "amount": 11.83, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0049", "date": "2026-07-31", "amount": 11.85, "category": "usage", "memo": "Auto recharge"}, {"number": "DMI9HEOI-0050", "date": "2026-08-05", "amount": 15.02, "category": "proration", "memo": "Standard 35\u219236"}, {"number": "DMI9HEOI-0051", "date": "2026-08-11", "amount": 9.65, "category": "proration", "memo": "Standard 36\u219237"}, {"number": "DMI9HEOI-0052", "date": "2026-08-22", "amount": 1420.25, "category": "renewal", "memo": "37 standard + 3 premium"}];
+const INV_KEY = 'claudeInvoices_v1';
+function loadInvoices(){ try { const s = JSON.parse(localStorage.getItem(INV_KEY)); return Array.isArray(s) ? s : null; } catch(e){ return null; } }
+let invoiceList = (function(){
+  const byNum = {};
+  INVOICES_SEED.forEach(i => { byNum[i.number] = i; });
+  const stored = loadInvoices();
+  if (stored) stored.forEach(i => { byNum[i.number] = i; });
+  return Object.values(byNum);
+})();
+function persistInvoices(){ try { localStorage.setItem(INV_KEY, JSON.stringify(invoiceList)); } catch(e){ console.warn('Storage unavailable:', e); } }
+function money(v){ return '$' + (v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function renderInvoices(){
+  const byMonth = {}, byCat = { renewal:0, proration:0, usage:0 }; let total = 0;
+  invoiceList.forEach(inv => {
+    const m = (inv.date||'').slice(0,7); if (!m) return;
+    const c = (inv.category in byCat) ? inv.category : 'usage';
+    byMonth[m] = byMonth[m] || { renewal:0, proration:0, usage:0, total:0 };
+    byMonth[m][c] += inv.amount; byMonth[m].total += inv.amount;
+    byCat[c] += inv.amount; total += inv.amount;
+  });
+  document.getElementById('inv-total').textContent = money(total);
+  document.getElementById('inv-renewal').textContent = money(byCat.renewal);
+  document.getElementById('inv-proration').textContent = money(byCat.proration);
+  document.getElementById('inv-usage').textContent = money(byCat.usage);
+  const fmt = v => v ? money(v) : '—';
+  const label = m => { const [y,mo] = m.split('-'); return new Date(+y, +mo-1, 1).toLocaleString('en-US',{month:'long',year:'numeric'}); };
+  const months = Object.keys(byMonth).sort().reverse();
+  document.getElementById('inv-tbody').innerHTML = months.map(m => {
+    const d = byMonth[m];
+    return '<tr><td>'+label(m)+'</td><td>'+fmt(d.renewal)+'</td><td>'+fmt(d.proration)+'</td><td>'+fmt(d.usage)+'</td><td style="font-weight:600">'+fmt(d.total)+'</td></tr>';
+  }).join('');
+}
+function addInvoice(){
+  const date = document.getElementById('inv-date').value;
+  const amount = parseFloat(document.getElementById('inv-amount').value);
+  const category = document.getElementById('inv-category').value;
+  const memo = document.getElementById('inv-memo').value.trim();
+  if (!date || isNaN(amount)){ alert('Enter a date and an amount.'); return; }
+  invoiceList.push({ number:'MANUAL-'+Date.now(), date, amount, category, memo });
+  persistInvoices();
+  renderInvoices();
+  document.getElementById('invoice-overlay').classList.remove('show');
+  document.getElementById('inv-amount').value=''; document.getElementById('inv-memo').value='';
+}
+
+let currentData = null;
+
+const RATE_STANDARD = 25;
+const RATE_PREMIUM = 125;
+
+// Seat counts + cost for a month: use the month's own members if uploaded, else the current default roster.
+function seatsFor(monthData){
+  const roster = (monthData && monthData.members && monthData.members.length) ? monthData.members : MEMBERS_DATA;
+  const active = roster.filter(m => (m.status || 'Active').toLowerCase() === 'active');
+  const standard = active.filter(m => m.tier === 'Standard').length;
+  const premium  = active.filter(m => m.tier === 'Premium').length;
+  return { roster, standard, premium, total: standard + premium,
+           cost: standard * RATE_STANDARD + premium * RATE_PREMIUM };
+}
+
+function renderDashboard(data) {
+  currentData = data;
+  const s = data.summary;
+
+  // Period badge
+  document.getElementById('period-badge').textContent = s.period;
+
+  // Metrics
+  const cacheRate = (s.total_cache_read / s.total_prompt_tokens * 100).toFixed(1);
+  document.getElementById('m-requests').textContent = fmtNum(s.total_requests);
+  document.getElementById('m-requests-sub').textContent = s.unique_users + ' active users';
+  document.getElementById('m-tokens').textContent = fmtTokens(s.total_tokens);
+  document.getElementById('m-tokens-sub').textContent = fmtTokens(s.total_prompt_tokens) + ' prompt · ' + fmtTokens(s.total_completion_tokens) + ' completion';
+  document.getElementById('m-cache').textContent = cacheRate + '%';
+  document.getElementById('m-users').textContent = s.unique_users;
+  document.getElementById('m-users-sub').textContent = 'Centricity Research team';
+  document.getElementById('m-avg').textContent = fmtNum(Math.round(s.total_tokens / s.total_requests));
+
+  // Seat config for this month (members-driven)
+  const seats = seatsFor(data);
+
+  // Enrich users with seat tier from this month's roster
+  const memberMap = {};
+  seats.roster.forEach(m => { memberMap[m.email] = m; });
+  data.users.forEach(u => {
+    const m = memberMap[u.email];
+    u.tier = m ? m.tier : 'Standard';
+  });
+
+  // Plan cost + seat badges (computed from membership)
+  const MONTHLY_COST = seats.cost;
+  document.getElementById('s-plan-cost').textContent = '$' + MONTHLY_COST.toLocaleString();
+  document.getElementById('s-seats-total').textContent = seats.total + ' seats total';
+  document.getElementById('s-std-badge').textContent = seats.standard + ' standard seats';
+  document.getElementById('s-prem-badge').textContent = seats.premium + ' premium seats';
+
+  // Spend metrics
+  const costPerUser = (MONTHLY_COST / s.unique_users).toFixed(2);
+  const costPerMToken = (MONTHLY_COST / (s.total_tokens / 1e6)).toFixed(2);
+  const costPerReq = (MONTHLY_COST / s.total_requests).toFixed(3);
+  document.getElementById('s-per-user').textContent = '$' + costPerUser;
+  document.getElementById('s-per-user-sub').textContent = s.unique_users + ' of ' + seats.total + ' seats active';
+  document.getElementById('s-per-token').textContent = '$' + costPerMToken;
+  document.getElementById('s-per-req').textContent = '$' + costPerReq;
+
+  renderUserTokenChart(data);
+  renderProductChart(data);
+  renderModelChart(data);
+  renderTable(data, currentSort);
+  renderBottomCharts(data);
+  renderInsights(data);
+  renderInactive(data);
+}
+
+function renderUserTokenChart(data) {
+  const users = [...data.users].sort((a,b) => b.total_tokens - a.total_tokens).slice(0,12);
+  const labels = users.map(u => u.name.split(' ')[0]);
+  const vals = users.map(u => u.total_tokens);
+  const height = Math.max(260, users.length * 26 + 60);
+  document.querySelector('#userTokenChart').parentElement.style.height = height + 'px';
+
+  if (charts.userToken) charts.userToken.destroy();
+  charts.userToken = new Chart(document.getElementById('userTokenChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        backgroundColor: users.map((_,i) => AVATAR_COLORS[i % AVATAR_COLORS.length][1] + 'cc'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ' ' + fmtTokens(ctx.raw) + ' tokens' }
+      }},
+      scales: {
+        x: { grid: { color: '#e2e0d833' }, ticks: { callback: v => fmtTokens(v), font: { size: 11 }, color: '#9b9a93' }},
+        y: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#1a1916' }}
+      }
+    }
+  });
+}
+
+function renderProductChart(data) {
+  const prods = Object.entries(data.products).sort((a,b) => b[1].requests - a[1].requests);
+  const labels = prods.map(p => p[0]);
+  const vals = prods.map(p => p[1].requests);
+  const colors = labels.map(l => PRODUCT_COLORS[l] || '#888');
+  const total = vals.reduce((a,b) => a+b, 0);
+
+  if (charts.product) charts.product.destroy();
+  charts.product = new Chart(document.getElementById('productChart'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ' ' + ctx.label + ': ' + fmtNum(ctx.raw) + ' (' + (ctx.raw/total*100).toFixed(1) + '%)' }
+      }}
+    }
+  });
+  const legend = document.getElementById('product-legend');
+  legend.innerHTML = labels.map((l,i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l} <span style="color:#9b9a93;margin-left:2px">${(vals[i]/total*100).toFixed(0)}%</span></span>`
+  ).join('');
+}
+
+function renderModelChart(data) {
+  const models = Object.entries(data.models).sort((a,b) => b[1].requests - a[1].requests);
+  const labels = models.map(m => MODEL_LABELS[m[0]] || m[0]);
+  const vals = models.map(m => m[1].requests);
+  const colors = models.map(m => MODEL_COLORS[m[0]] || '#888');
+  const total = vals.reduce((a,b) => a+b, 0);
+
+  if (charts.model) charts.model.destroy();
+  charts.model = new Chart(document.getElementById('modelChart'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ' ' + ctx.label + ': ' + fmtNum(ctx.raw) + ' (' + (ctx.raw/total*100).toFixed(1) + '%)' }
+      }}
+    }
+  });
+  const legend = document.getElementById('model-legend');
+  legend.innerHTML = labels.map((l,i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l} <span style="color:#9b9a93;margin-left:2px">${(vals[i]/total*100).toFixed(0)}%</span></span>`
+  ).join('');
+}
+
+function renderTable(data, sortKey) {
+  const users = [...data.users];
+  if (sortKey === 'tokens') users.sort((a,b) => b.total_tokens - a.total_tokens);
+  else if (sortKey === 'requests') users.sort((a,b) => b.requests - a.requests);
+  else users.sort((a,b) => a.name.localeCompare(b.name));
+
+  const maxTokens = Math.max(...users.map(u => u.total_tokens));
+  const tbody = document.getElementById('user-tbody');
+  tbody.innerHTML = '';
+
+  users.forEach((u, idx) => {
+    const ac = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    const pct = (u.total_tokens / maxTokens * 100).toFixed(0);
+    const pills = Object.entries(u.products).map(([prod, cnt]) => {
+      const cls = prod === 'Chat' ? 'pill-chat' : prod === 'Claude Code' ? 'pill-code' : prod === 'Claude in Chrome' ? 'pill-chrome' : prod === 'Cowork' ? 'pill-cowork' : 'pill-office';
+      return `<span class="pill ${cls}">${prod}</span>`;
+    }).join('');
+
+    // Main row
+    const tr = document.createElement('tr');
+    tr.id = 'row-' + idx;
+    tr.innerHTML = `
+      <td style="width:36px; padding-right:0">
+        <button class="expand-btn" id="btn-${idx}" onclick="toggleExpand(${idx})" aria-label="Expand ${u.name}">&#9654;</button>
+      </td>
+      <td>
+        <div class="user-cell">
+          <div class="avatar" style="background:${ac[0]};color:${ac[1]}">${initials(u.name)}</div>
+          <div>
+            <div class="user-name">${u.name}${u.tier === 'Premium' ? ' <span class="tier-badge tier-premium">Premium</span>' : ''}</div>
+            <div class="user-email">${u.email}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="bar-cell">
+          <span>${fmtTokens(u.total_tokens)}</span>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%;background:${ac[1]}"></div></div>
+        </div>
+      </td>
+      <td>${fmtNum(u.requests)}</td>
+      <td>${u.cache_ratio}%</td>
+      <td><div class="product-pills">${pills}</div></td>
+      <td style="text-align:center"><button class="expand-btn" id="btn2-${idx}" onclick="toggleExpand(${idx})" aria-label="Expand details">&#9654;</button></td>
+    `;
+    tbody.appendChild(tr);
+
+    // Detail row
+    const modelTotal = Object.values(u.models).reduce((a,b) => a+b, 0);
+    const modelBars = Object.entries(u.models).sort((a,b) => b[1]-a[1]).map(([m, cnt]) => {
+      const pct = (cnt / modelTotal * 100).toFixed(0);
+      const color = MODEL_COLORS[m] || '#888';
+      const label = MODEL_LABELS[m] || m;
+      return `<div class="model-bar-row">
+        <div class="model-bar-label"><span>${label}</span><span>${fmtNum(cnt)} req (${pct}%)</span></div>
+        <div class="model-bar-track"><div class="model-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+    }).join('');
+
+    const prodItems = Object.entries(u.products).map(([p, cnt]) =>
+      `<div class="detail-row-item"><span>${p}</span><span>${fmtNum(cnt)} requests</span></div>`
+    ).join('');
+
+    const dtr = document.createElement('tr');
+    dtr.className = 'detail-row';
+    dtr.id = 'detail-' + idx;
+    dtr.innerHTML = `<td colspan="7">
+      <div class="detail-inner">
+        <div class="detail-section">
+          <h4>Model usage</h4>
+          ${modelBars}
+        </div>
+        <div class="detail-section">
+          <h4>Token breakdown</h4>
+          <div class="detail-row-item"><span>Prompt tokens</span><span>${fmtTokens(u.prompt_tokens)}</span></div>
+          <div class="detail-row-item"><span>Completion tokens</span><span>${fmtTokens(u.completion_tokens)}</span></div>
+          <div class="detail-row-item"><span>Cache reads</span><span>${fmtTokens(u.cache_read)}</span></div>
+          <div class="detail-row-item"><span>Cache hit rate</span><span>${u.cache_ratio}%</span></div>
+          ${u.web_searches > 0 ? `<div class="detail-row-item"><span>Web searches</span><span>${u.web_searches}</span></div>` : ''}
+          <h4 style="margin-top:14px">Products</h4>
+          ${prodItems}
+        </div>
+      </div>
+    </td>`;
+    tbody.appendChild(dtr);
+  });
+}
+
+function toggleExpand(idx) {
+  const detail = document.getElementById('detail-' + idx);
+  const btn1 = document.getElementById('btn-' + idx);
+  const btn2 = document.getElementById('btn2-' + idx);
+  const row = document.getElementById('row-' + idx);
+  const isOpen = detail.classList.contains('open');
+  detail.classList.toggle('open', !isOpen);
+  [btn1, btn2].forEach(b => { if(b) b.classList.toggle('open', !isOpen); });
+  row.classList.toggle('expanded', !isOpen);
+}
+
+function setSort(key, el) {
+  currentSort = key;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (currentData) renderTable(currentData, key);
+}
+
+function renderBottomCharts(data) {
+  const users = [...data.users].sort((a,b) => b.requests - a.requests).slice(0,15);
+  const labels = users.map(u => u.name.split(' ')[0]);
+
+  const reqH = Math.max(260, users.length * 26 + 60);
+  document.getElementById('req-chart-wrap').style.height = reqH + 'px';
+  if (charts.req) charts.req.destroy();
+  charts.req = new Chart(document.getElementById('reqChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: users.map(u => u.requests), backgroundColor: '#2563ebcc', borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmtNum(ctx.raw) + ' requests' }}},
+      scales: {
+        x: { grid: { color: '#e2e0d833' }, ticks: { font: { size: 11 }, color: '#9b9a93' }},
+        y: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#1a1916' }}
+      }
+    }
+  });
+
+  const cacheUsers = [...data.users].sort((a,b) => a.cache_ratio - b.cache_ratio);
+  const cacheH = Math.max(260, cacheUsers.length * 22 + 60);
+  document.getElementById('cache-chart-wrap').style.height = cacheH + 'px';
+  if (charts.cache) charts.cache.destroy();
+  charts.cache = new Chart(document.getElementById('cacheChart'), {
+    type: 'bar',
+    data: {
+      labels: cacheUsers.map(u => u.name.split(' ')[0]),
+      datasets: [{ data: cacheUsers.map(u => u.cache_ratio), backgroundColor: '#0d8f6fcc', borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + '% cache rate' }}},
+      scales: {
+        x: { min: 80, max: 100, grid: { color: '#e2e0d833' }, ticks: { callback: v => v + '%', font: { size: 11 }, color: '#9b9a93' }},
+        y: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#1a1916' }}
+      }
+    }
+  });
+}
+
+function renderInsights(data) {
+  const users = data.users;
+  const totalReqs = data.summary.total_requests;
+  const topUser = users[0];
+  const topPct = (topUser.total_tokens / data.summary.total_tokens * 100).toFixed(0);
+
+  // Power users (top 3)
+  const top3 = users.slice(0,3);
+  const top3pct = (top3.reduce((a,u) => a+u.total_tokens,0) / data.summary.total_tokens * 100).toFixed(0);
+
+  // Multi-product users
+  const multiProd = users.filter(u => Object.keys(u.products).length > 1);
+
+  // Opus heavy users
+  const opusHeavy = users.filter(u => {
+    const opusReqs = (u.models['claude-opus-4-7'] || 0) + (u.models['claude-opus-4-8'] || 0);
+    return opusReqs / u.requests > 0.5 && u.requests > 50;
+  });
+
+  // Low engagement users
+  const lowEng = users.filter(u => u.requests < 30);
+
+  // Cache rate
+  const cacheRate = (data.summary.total_cache_read / data.summary.total_prompt_tokens * 100).toFixed(1);
+
+  const insights = [
+    {
+      icon: '🏆', bg: '#eff6ff', color: '#1d4ed8',
+      title: 'Power user concentration',
+      body: `${top3.map(u => u.name.split(' ')[0]).join(', ')} account for ${top3pct}% of all token usage. ${topUser.name.split(' ')[0]} alone drives ${topPct}% — strong ROI signal for their license.`
+    },
+    {
+      icon: '⚡', bg: '#eaf6f1', color: '#0d8f6f',
+      title: 'Excellent cache efficiency',
+      body: `Team-wide cache hit rate is ${cacheRate}%, meaning the vast majority of prompt tokens are served from cache — substantially reducing effective cost per token.`
+    },
+    {
+      icon: '🔧', bg: '#f3f0ff', color: '#5b21b6',
+      title: `${multiProd.length} users using advanced products`,
+      body: `${multiProd.map(u => u.name.split(' ')[0]).join(', ')} use multiple Claude surfaces (Cowork, Claude Code, Office Agents). These are candidates for deeper workflow integrations.`
+    },
+    {
+      icon: '🧠', bg: '#fef3e2', color: '#92400e',
+      title: 'Opus model preference',
+      body: `${opusHeavy.length > 0 ? opusHeavy.map(u => u.name.split(' ')[0]).join(', ') + (opusHeavy.length > 0 ? ' heavily' : '') + ' use Opus models (>50% of requests)' : 'Most users are on Sonnet'}. Opus usage on complex tasks suggests high-value research or analytical workflows.`
+    },
+    {
+      icon: '📈', bg: '#f0fdf4', color: '#166534',
+      title: `${lowEng.length} users with low engagement`,
+      body: `${lowEng.map(u => u.name.split(' ')[0]).slice(0,4).join(', ')}${lowEng.length > 4 ? ' and others' : ''} have under 30 requests this month. Consider onboarding support or use-case discovery to drive adoption.`
+    },
+    {
+      icon: '🌐', bg: '#fdf0ee', color: '#9b2c2c',
+      title: 'Claude in Chrome opportunity',
+      body: `Only Anjali is using Claude in Chrome (513 requests). This product has strong research ROI — consider expanding access or running a team demo for web-heavy roles.`
+    },
+  ];
+
+  const grid = document.getElementById('insights-grid');
+  grid.innerHTML = insights.map(i => `
+    <div class="insight-card">
+      <div class="insight-icon" style="background:${i.bg};color:${i.color}">${i.icon}</div>
+      <div>
+        <div class="insight-title">${i.title}</div>
+        <div class="insight-body">${i.body}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderInactive(data) {
+  const roster = (data.members && data.members.length) ? data.members : MEMBERS_DATA;
+  const activeEmails = new Set(data.users.map(u => u.email));
+  const inactive = roster.filter(m => !activeEmails.has(m.email));
+
+  document.getElementById('inactive-count').textContent = inactive.length + ' of ' + roster.length + ' seats unused';
+
+  const grid = document.getElementById('inactive-grid');
+  grid.innerHTML = inactive.map((m, idx) => {
+    const ac = AVATAR_COLORS[(idx + 5) % AVATAR_COLORS.length];
+    const tierBadge = m.tier === 'Premium'
+      ? `<span class="tier-badge tier-premium">Premium</span>`
+      : `<span class="tier-badge tier-standard">Standard</span>`;
+    const statusBadge = m.status === 'Pending'
+      ? `<span class="status-pending">Invite pending</span>` : '';
+    const note = m.note ? `<div class="inactive-note">${m.note}</div>` : '';
+    return `<div class="inactive-item">
+      <div class="avatar" style="background:${ac[0]};color:${ac[1]};opacity:0.6">${initials(m.name)}</div>
+      <div class="inactive-info">
+        <div class="inactive-name">${m.name}</div>
+        <div class="inactive-email">${m.email}</div>
+        ${note}
+      </div>
+      ${statusBadge || tierBadge}
+    </div>`;
+  }).join('');
+}
+
+// ── CSV parser ──
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g,''));
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = vals[i]);
+    return obj;
+  });
+}
+
+function processCSV(text, filename) {
+  try {
+    const rows = parseCSV(text);
+    // Detect period from filename
+    const match = filename.match(/(\d{4}-\d{2}-\d{2})-to-(\d{4}-\d{2}-\d{2})/);
+    let period = 'Uploaded report'; let periodKey = 'upload-' + Date.now();
+    if (match) {
+      const [py, pm] = match[1].split('-');
+      const d = new Date(+py, +pm - 1, 1);            // build in LOCAL time — no UTC rollover
+      period = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      periodKey = py + '-' + pm;
+    }
+
+    const userMap = {};
+    rows.forEach(r => {
+      const email = r.user_email;
+      if (!userMap[email]) {
+        userMap[email] = {
+          email, name: emailToName(email),
+          requests:0, prompt_tokens:0, completion_tokens:0,
+          cache_read:0, web_searches:0, products:{}, models:{}
+        };
+      }
+      const u = userMap[email];
+      u.requests += +r.total_requests || 0;
+      u.prompt_tokens += +r.total_prompt_tokens || 0;
+      u.completion_tokens += +r.total_completion_tokens || 0;
+      u.cache_read += +r.total_cache_read_tokens || 0;
+      u.web_searches += +r.total_web_search_count || 0;
+      const prod = r.product; if (prod) u.products[prod] = (u.products[prod]||0) + (+r.total_requests||0);
+      const model = r.model; if (model) u.models[model] = (u.models[model]||0) + (+r.total_requests||0);
+    });
+
+    const users = Object.values(userMap).map(u => {
+      u.total_tokens = u.prompt_tokens + u.completion_tokens;
+      u.cache_ratio = u.prompt_tokens > 0 ? +(u.cache_read / u.prompt_tokens * 100).toFixed(1) : 0;
+      return u;
+    }).sort((a,b) => b.total_tokens - a.total_tokens);
+
+    const summary = {
+      period, periodKey,
+      total_requests: users.reduce((a,u) => a+u.requests,0),
+      total_prompt_tokens: users.reduce((a,u) => a+u.prompt_tokens,0),
+      total_completion_tokens: users.reduce((a,u) => a+u.completion_tokens,0),
+      total_tokens: users.reduce((a,u) => a+u.total_tokens,0),
+      total_cache_read: users.reduce((a,u) => a+u.cache_read,0),
+      total_web_searches: users.reduce((a,u) => a+u.web_searches,0),
+      unique_users: users.length,
+    };
+
+    const products = {}; const models = {};
+    rows.forEach(r => {
+      const p = r.product;
+      if (p) { if (!products[p]) products[p] = {requests:0,tokens:0}; products[p].requests += +r.total_requests||0; products[p].tokens += +r.total_prompt_tokens||0; }
+      const m = r.model;
+      if (m) { if (!models[m]) models[m] = {requests:0,tokens:0}; models[m].requests += +r.total_requests||0; models[m].tokens += +r.total_prompt_tokens||0; }
+    });
+
+    return { summary, users, products, models };
+  } catch(e) {
+    alert('Could not parse CSV. Please check the file format.\n\n' + e.message);
+    return null;
+  }
+}
+
+function emailToName(email) {
+  const local = email.split('@')[0];
+  const parts = local.split('.');
+  if (parts.length >= 2) return parts[0].charAt(0).toUpperCase() + parts[0].slice(1) + ' ' + parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
+
+// ── File handling ──
+document.getElementById('csv-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    handleUploadedFile(ev.target.result, file.name);
+  };
+  reader.readAsText(file);
+  this.value = '';
+});
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    handleUploadedFile(ev.target.result, file.name);
+  };
+  reader.readAsText(file);
+});
+
+// Close overlay on backdrop click
+document.getElementById('upload-overlay').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
+
+// Import backup handler
+document.getElementById('import-input').addEventListener('change', function(e){
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => importData(ev.target.result);
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('invoice-overlay').addEventListener('click', function(e){ if (e.target === this) this.classList.remove('show'); });
+
+// ── Init ──
+renderInvoices();
+rebuildMonthSelect();
+const _msel = document.getElementById('month-select');
+if (_msel) _msel.addEventListener('change', e => showMonth(e.target.value));
+showMonth(monthKeys()[0]);
+</script>
+</body>
+</html>
